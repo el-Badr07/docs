@@ -1,0 +1,693 @@
+---
+title: "Financial Documents API Reference"
+description: "Complete API reference for processing various financial documents including bank statements, receipts, and expense reports"
+---
+
+# Financial Documents API Reference
+
+The Financial Documents API extends Textra's document processing capabilities beyond invoices to handle a comprehensive range of financial documents. This API provides specialized processing workflows for bank statements, receipts, expense reports, and other financial documents while maintaining the same high standards of accuracy and French accounting compliance.
+
+## Supported Document Types
+
+### Document Categories
+
+The API supports processing of multiple financial document types, each with specialized extraction and processing logic:
+
+**Primary Documents:**
+- **Bank Statements**: Automated transaction extraction and categorization
+- **Receipts**: Expense receipt processing with category mapping
+- **Expense Reports**: Employee expense report validation and processing
+- **Purchase Orders**: PO matching and three-way matching capabilities
+- **Credit Notes**: Credit memo processing with original invoice linking
+
+**Supporting Documents:**
+- **Delivery Notes**: Goods receipt documentation
+- **Payment Vouchers**: Payment authorization and tracking
+- **Contract Documents**: Service agreement and contract analysis
+- **Tax Documents**: VAT returns and tax-related document processing
+
+---
+
+## Bank Statement Processing
+
+### Upload Bank Statement
+
+Process bank statements to extract transaction data and generate accounting entries.
+
+```http
+POST /api/financial-documents/bank-statements
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `file` (required): Bank statement file (PDF, CSV, OFX, QIF)
+- `bank_code`: Bank identifier for format-specific processing
+- `account_number`: Bank account number for validation
+- `statement_period`: Statement period (YYYY-MM format)
+- `auto_categorize`: Enable automatic transaction categorization
+- `generate_journal_entries`: Create journal entries for transactions
+
+**Response:**
+```json
+{
+  "document_id": "BS-2023-12-001",
+  "processing_status": "completed",
+  "bank_info": {
+    "bank_name": "Crédit Agricole",
+    "account_number": "12345678901",
+    "iban": "FR76 1234 5678 9012 3456 789",
+    "statement_period": "2023-12"
+  },
+  "transactions": [
+    {
+      "transaction_id": "TXN-001",
+      "date": "2023-12-01",
+      "description": "VIREMENT SALAIRE ENTREPRISE ABC",
+      "amount": 3500.00,
+      "type": "credit",
+      "category": "salary_payment",
+      "proposed_accounts": {
+        "debit_account": "512000",
+        "credit_account": "421000"
+      },
+      "confidence": 0.94
+    },
+    {
+      "transaction_id": "TXN-002",
+      "date": "2023-12-02",
+      "description": "PRELEVEMENT EDF FACTURE ELECTRICITE",
+      "amount": -245.67,
+      "type": "debit",
+      "category": "utilities",
+      "proposed_accounts": {
+        "debit_account": "606100",
+        "credit_account": "512000"
+      },
+      "confidence": 0.89
+    }
+  ],
+  "summary": {
+    "total_transactions": 45,
+    "total_credits": 12500.00,
+    "total_debits": -8750.33,
+    "net_movement": 3749.67,
+    "opening_balance": 15230.45,
+    "closing_balance": 18980.12
+  },
+  "journal_entries_generated": 45
+}
+```
+
+### Get Bank Statement Details
+
+Retrieve detailed information about a processed bank statement.
+
+```http
+GET /api/financial-documents/bank-statements/{document_id}
+```
+
+**Query Parameters:**
+- `include_transactions`: Include transaction details (default: true)
+- `include_journal_entries`: Include generated journal entries
+- `transaction_limit`: Limit number of transactions returned
+
+### Categorize Transactions
+
+Update or refine transaction categorization for bank statement transactions.
+
+```http
+POST /api/financial-documents/bank-statements/{document_id}/categorize
+```
+
+**Request Body:**
+```json
+{
+  "transactions": [
+    {
+      "transaction_id": "TXN-001",
+      "category": "office_supplies",
+      "account_mapping": {
+        "debit_account": "606400",
+        "credit_account": "512000"
+      },
+      "notes": "Office supplies purchase - monthly recurring"
+    }
+  ],
+  "apply_learning": true,
+  "update_journal_entries": true
+}
+```
+
+---
+
+## Receipt Processing
+
+### Upload Receipt
+
+Process expense receipts for automated expense categorization and reimbursement.
+
+```http
+POST /api/financial-documents/receipts
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `file` (required): Receipt image or PDF
+- `expense_type`: Type of expense (meal, transport, office_supplies, etc.)
+- `employee_id`: Employee submitting the receipt
+- `expense_date`: Date of expense (if different from receipt date)
+- `currency`: Receipt currency (default: EUR)
+- `reimbursable`: Whether expense is reimbursable
+
+**Response:**
+```json
+{
+  "document_id": "RCP-2023-12-001",
+  "processing_status": "completed",
+  "extracted_data": {
+    "merchant_name": "Restaurant Le Petit Bistro",
+    "merchant_address": "123 Rue de la Paix, 75001 Paris",
+    "receipt_date": "2023-12-01",
+    "receipt_number": "R-2023-001",
+    "total_amount": 45.80,
+    "currency": "EUR",
+    "line_items": [
+      {
+        "description": "Menu du jour",
+        "quantity": 2,
+        "unit_price": 18.50,
+        "total": 37.00
+      },
+      {
+        "description": "Café",
+        "quantity": 2,
+        "unit_price": 4.40,
+        "total": 8.80
+      }
+    ],
+    "payment_method": "carte_bancaire",
+    "vat_details": {
+      "vat_rate": 10.0,
+      "vat_amount": 4.16,
+      "amount_ht": 41.64
+    }
+  },
+  "expense_categorization": {
+    "category": "business_meals",
+    "subcategory": "client_entertainment",
+    "deductible_percentage": 75,
+    "deductible_amount": 34.35,
+    "proposed_accounts": {
+      "expense_account": "623100",
+      "vat_account": "44566"
+    }
+  },
+  "compliance_check": {
+    "french_regulations": "compliant",
+    "required_fields_present": true,
+    "receipt_validity": "valid",
+    "amount_threshold_check": "below_limit"
+  }
+}
+```
+
+### Batch Receipt Processing
+
+Process multiple receipts simultaneously for expense report generation.
+
+```http
+POST /api/financial-documents/receipts/batch
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `files[]`: Multiple receipt files
+- `employee_id`: Employee ID for all receipts
+- `expense_report_id`: Optional expense report to associate receipts with
+- `default_expense_type`: Default category for uncategorized receipts
+
+---
+
+## Expense Report Processing
+
+### Create Expense Report
+
+Generate expense reports from processed receipts and manual entries.
+
+```http
+POST /api/financial-documents/expense-reports
+```
+
+**Request Body:**
+```json
+{
+  "employee_id": "EMP-123",
+  "report_period": {
+    "start_date": "2023-12-01",
+    "end_date": "2023-12-31"
+  },
+  "receipt_ids": ["RCP-001", "RCP-002", "RCP-003"],
+  "manual_expenses": [
+    {
+      "date": "2023-12-15",
+      "description": "Taxi to client meeting",
+      "amount": 25.50,
+      "category": "transport",
+      "receipt_missing_reason": "receipt_lost"
+    }
+  ],
+  "report_title": "December 2023 Business Expenses"
+}
+```
+
+**Response:**
+```json
+{
+  "expense_report_id": "ER-2023-12-001",
+  "employee_info": {
+    "employee_id": "EMP-123",
+    "name": "Jean Dupont",
+    "department": "Sales",
+    "manager": "Marie Martin"
+  },
+  "report_summary": {
+    "total_expenses": 456.75,
+    "total_reimbursable": 398.25,
+    "total_non_reimbursable": 58.50,
+    "receipt_count": 15,
+    "manual_entries": 3
+  },
+  "expense_breakdown": {
+    "meals": 185.40,
+    "transport": 125.50,
+    "office_supplies": 89.25,
+    "other": 56.60
+  },
+  "approval_status": "pending_review",
+  "generated_documents": {
+    "pdf_report": "/exports/expense_reports/ER-2023-12-001.pdf",
+    "csv_export": "/exports/expense_reports/ER-2023-12-001.csv"
+  }
+}
+```
+
+### Approve Expense Report
+
+Approve or reject expense reports with detailed feedback.
+
+```http
+POST /api/financial-documents/expense-reports/{report_id}/approve
+```
+
+**Request Body:**
+```json
+{
+  "approval_status": "approved",
+  "approver_id": "MGR-456",
+  "approval_notes": "All expenses appear reasonable and properly documented",
+  "expense_adjustments": [
+    {
+      "expense_id": "EXP-001",
+      "adjustment_type": "amount_reduction",
+      "original_amount": 125.50,
+      "adjusted_amount": 100.00,
+      "reason": "Amount exceeds policy limit for taxi expenses"
+    }
+  ],
+  "generate_payment_request": true
+}
+```
+
+---
+
+## Purchase Order Processing
+
+### Upload Purchase Order
+
+Process purchase orders for three-way matching with invoices and delivery notes.
+
+```http
+POST /api/financial-documents/purchase-orders
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `file` (required): Purchase order document
+- `po_number`: Purchase order number for validation
+- `supplier_id`: Supplier identifier
+- `expected_delivery_date`: Expected delivery date
+- `auto_match_invoices`: Enable automatic invoice matching
+
+**Response:**
+```json
+{
+  "document_id": "PO-2023-001",
+  "po_details": {
+    "po_number": "PO-2023-001",
+    "supplier_name": "Fournisseur Industriel SARL",
+    "po_date": "2023-11-15",
+    "delivery_date": "2023-12-15",
+    "total_amount": 15750.00,
+    "currency": "EUR"
+  },
+  "line_items": [
+    {
+      "item_code": "ITEM-001",
+      "description": "Matières premières type A",
+      "quantity": 100,
+      "unit_price": 125.00,
+      "line_total": 12500.00,
+      "delivery_status": "pending"
+    },
+    {
+      "item_code": "ITEM-002", 
+      "description": "Emballage carton",
+      "quantity": 500,
+      "unit_price": 6.50,
+      "line_total": 3250.00,
+      "delivery_status": "pending"
+    }
+  ],
+  "matching_status": {
+    "invoice_matched": false,
+    "delivery_matched": false,
+    "three_way_match_complete": false
+  }
+}
+```
+
+### Three-Way Matching
+
+Perform three-way matching between purchase orders, invoices, and delivery notes.
+
+```http
+POST /api/financial-documents/three-way-match
+```
+
+**Request Body:**
+```json
+{
+  "purchase_order_id": "PO-2023-001",
+  "invoice_id": "INV-2023-456",
+  "delivery_note_id": "DN-2023-789",
+  "tolerance_settings": {
+    "amount_tolerance_percentage": 5.0,
+    "quantity_tolerance_percentage": 2.0,
+    "date_tolerance_days": 7
+  },
+  "auto_approve_within_tolerance": true
+}
+```
+
+**Response:**
+```json
+{
+  "match_id": "MATCH-2023-001",
+  "match_status": "matched_with_variances",
+  "overall_match_score": 0.95,
+  "variances": [
+    {
+      "type": "amount_variance",
+      "po_amount": 15750.00,
+      "invoice_amount": 15825.00,
+      "variance": 75.00,
+      "variance_percentage": 0.48,
+      "within_tolerance": true
+    }
+  ],
+  "line_item_matches": [
+    {
+      "item_code": "ITEM-001",
+      "po_quantity": 100,
+      "delivered_quantity": 98,
+      "invoiced_quantity": 98,
+      "match_status": "matched"
+    }
+  ],
+  "recommended_action": "approve_with_variance_note",
+  "approval_required": false
+}
+```
+
+---
+
+## Credit Note Processing
+
+### Upload Credit Note
+
+Process credit notes and link them to original invoices.
+
+```http
+POST /api/financial-documents/credit-notes
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `file` (required): Credit note document
+- `original_invoice_id`: Reference to original invoice
+- `credit_reason`: Reason for credit (return, discount, error_correction)
+- `auto_generate_journal`: Generate reversing journal entries
+
+**Response:**
+```json
+{
+  "document_id": "CN-2023-001",
+  "credit_note_details": {
+    "credit_note_number": "CN-2023-001",
+    "credit_date": "2023-12-05",
+    "original_invoice_reference": "FAC-2023-456",
+    "supplier_name": "Fournisseur SARL",
+    "credit_amount": 1200.00,
+    "credit_reason": "goods_return",
+    "currency": "EUR"
+  },
+  "original_invoice_link": {
+    "invoice_id": "INV-2023-456",
+    "original_amount": 15000.00,
+    "remaining_amount": 13800.00,
+    "credit_percentage": 8.0
+  },
+  "journal_entries": [
+    {
+      "entry_type": "credit_note_reversal",
+      "entry_lines": [
+        {
+          "account_number": "401001",
+          "account_title": "Fournisseurs - Fournisseur SARL",
+          "debit_amount": 1200.00,
+          "credit_amount": 0.00
+        },
+        {
+          "account_number": "606100",
+          "account_title": "Achats stockés - Matières premières",
+          "debit_amount": 0.00,
+          "credit_amount": 1000.00
+        },
+        {
+          "account_number": "44566",
+          "account_title": "TVA déductible",
+          "debit_amount": 0.00,
+          "credit_amount": 200.00
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Document Search and Analytics
+
+### Search Financial Documents
+
+Advanced search across all financial document types.
+
+```http
+POST /api/financial-documents/search
+```
+
+**Request Body:**
+```json
+{
+  "query": "office supplies",
+  "document_types": ["receipts", "invoices", "expense_reports"],
+  "date_range": {
+    "start_date": "2023-01-01",
+    "end_date": "2023-12-31"
+  },
+  "amount_range": {
+    "min_amount": 50.00,
+    "max_amount": 1000.00
+  },
+  "filters": {
+    "suppliers": ["Office Depot", "Staples"],
+    "categories": ["office_supplies", "stationery"],
+    "processing_status": ["completed", "approved"]
+  },
+  "sort_by": "date",
+  "sort_order": "desc",
+  "limit": 50
+}
+```
+
+### Financial Document Analytics
+
+Get comprehensive analytics across all document types.
+
+```http
+GET /api/financial-documents/analytics
+```
+
+**Query Parameters:**
+- `period`: Analysis period (monthly, quarterly, yearly)
+- `document_types`: Specific document types to analyze
+- `date_from`: Start date for analysis
+- `date_to`: End date for analysis
+
+**Response:**
+```json
+{
+  "summary": {
+    "total_documents_processed": 2450,
+    "total_amount_processed": 485750.00,
+    "processing_success_rate": 97.8,
+    "average_processing_time": 8.3
+  },
+  "by_document_type": {
+    "invoices": {
+      "count": 1250,
+      "total_amount": 385000.00,
+      "average_amount": 308.00
+    },
+    "receipts": {
+      "count": 890,
+      "total_amount": 45750.00,
+      "average_amount": 51.40
+    },
+    "bank_statements": {
+      "count": 12,
+      "total_transactions": 2450,
+      "net_movement": 125000.00
+    }
+  },
+  "trends": [
+    {
+      "period": "2023-12",
+      "document_count": 245,
+      "total_amount": 48575.00,
+      "growth_percentage": 12.5
+    }
+  ],
+  "top_categories": [
+    {
+      "category": "office_supplies",
+      "count": 156,
+      "total_amount": 12450.00
+    },
+    {
+      "category": "utilities",
+      "count": 89,
+      "total_amount": 8750.00
+    }
+  ]
+}
+```
+
+---
+
+## Compliance and Validation
+
+### Document Compliance Check
+
+Validate documents against French accounting and tax regulations.
+
+```http
+POST /api/financial-documents/{document_id}/compliance-check
+```
+
+**Response:**
+```json
+{
+  "document_id": "RCP-2023-001",
+  "compliance_status": "compliant",
+  "checks_performed": [
+    {
+      "check_type": "required_fields",
+      "status": "passed",
+      "details": "All mandatory fields present"
+    },
+    {
+      "check_type": "vat_calculation",
+      "status": "passed",
+      "details": "VAT calculation is correct"
+    },
+    {
+      "check_type": "amount_limits",
+      "status": "warning",
+      "details": "Amount approaches policy limit for category"
+    }
+  ],
+  "regulatory_compliance": {
+    "french_tax_code": "compliant",
+    "expense_policy": "compliant_with_warnings",
+    "documentation_requirements": "compliant"
+  },
+  "recommendations": [
+    "Consider splitting large expenses across multiple receipts for better policy compliance"
+  ]
+}
+```
+
+### Bulk Compliance Validation
+
+Validate multiple documents for compliance in batch.
+
+```http
+POST /api/financial-documents/bulk-compliance-check
+```
+
+**Request Body:**
+```json
+{
+  "document_ids": ["RCP-001", "RCP-002", "INV-123"],
+  "compliance_rules": ["french_tax_code", "expense_policy", "vat_regulations"],
+  "generate_report": true
+}
+```
+
+---
+
+## Export and Integration
+
+### Export Financial Documents
+
+Export processed documents in various formats for integration with accounting systems.
+
+```http
+POST /api/financial-documents/export
+```
+
+**Request Body:**
+```json
+{
+  "document_ids": ["RCP-001", "INV-123", "BS-001"],
+  "export_format": "sage",
+  "include_journal_entries": true,
+  "date_range": {
+    "start_date": "2023-12-01",
+    "end_date": "2023-12-31"
+  },
+  "grouping": "by_document_type"
+}
+```
+
+**Supported Export Formats:**
+- **Sage**: Sage accounting software format
+- **CEGID**: CEGID accounting integration
+- **EBP**: EBP accounting format
+- **FEC**: French regulatory export format
+- **CSV**: Generic CSV format
+- **Excel**: Microsoft Excel format with multiple sheets
+
+The Financial Documents API provides comprehensive processing capabilities for all types of financial documents, enabling businesses to automate their complete financial document workflow while maintaining compliance with French accounting standards and regulations. 

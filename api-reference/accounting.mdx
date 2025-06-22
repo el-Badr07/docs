@@ -1,0 +1,654 @@
+---
+title: "Accounting API Reference"
+description: "Complete reference for Textra's intelligent accounting automation API with French PCG compliance"
+---
+
+# Accounting API Reference
+
+The Textra Accounting API provides a comprehensive solution for automated invoice processing, accounting data extraction, and French PCG (Plan Comptable Général) compliant journal entry generation. This API transforms raw invoice documents into structured accounting data through a sophisticated 5-phase pipeline.
+
+## System Architecture
+
+### Core Pipeline Overview
+
+The accounting system operates through a **5-phase processing pipeline**:
+
+1. **Phase 1: Data Extraction** - OCR processing and structured data extraction using LLM
+2. **Phase 2: Account Imputation** - PCG account mapping and proposals generation  
+3. **Phase 3: Journal Generation** - Balanced double-entry journal creation
+4. **Phase 4: Validation & Enhancement** - Data validation and enrichment
+5. **Phase 5: Export & Integration** - Multi-format export (CSV, XML, JSON, Sage)
+
+### Technology Stack
+
+- **Backend**: FastAPI with async/await support
+- **Database**: MongoDB for document storage with Motor async driver
+- **Cache**: Redis for performance optimization and result caching
+- **Message Queue**: RabbitMQ + Celery for background task processing
+- **AI/ML**: Multi-provider LLM support (Groq, Gemini, OpenAI)
+- **OCR**: LLMWhisperer + PyMuPDF for document text extraction
+- **Accounting**: French PCG compliance with 8000+ account mappings
+
+---
+
+## Core Processing Endpoints
+
+### Single Invoice Processing
+
+#### Synchronous Processing
+
+Process a single invoice with immediate response containing complete results.
+
+```http
+POST /api/accounting/process-invoice
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `file` (required): Invoice file (PDF, JPG, PNG, TIFF)
+- `export_formats`: Comma-separated formats (csv,json,xml,sage)
+- `auto_export`: Boolean for automatic export (default: true)
+- `user_id`: Optional user identifier for tracking
+
+**Response Structure:**
+```json
+{
+  "status": "success",
+  "invoice_id": "INV-a1b2c3d4-231201",
+  "processing_time": 12.45,
+  "extracted_data": {
+    "invoice_number": "FAC-2023-001",
+    "invoice_date": "2023-12-01",
+    "vendor_name": "Fournisseur SARL",
+    "total_amount_ht": 1000.00,
+    "total_amount_ttc": 1200.00,
+    "line_items": [
+      {
+        "description": "Matières premières",
+        "quantity": 10.0,
+        "unit_price": 100.00,
+        "line_amount_ht": 1000.00,
+        "vat_rate": 20.0,
+        "vat_amount": 200.00
+      }
+    ]
+  },
+  "accounting_proposals": {
+    "tiers_proposal": {
+      "account_number": "401001",
+      "account_title": "Fournisseurs - Fournisseur SARL",
+      "confidence": 0.95
+    },
+    "line_item_proposals": [
+      {
+        "line_index": 0,
+        "charge_product_account": {
+          "account_number": "606100",
+          "account_title": "Achats stockés - Matières premières",
+          "confidence": 0.92
+        }
+      }
+    ]
+  },
+  "journal_entry": {
+    "entry_lines": [
+      {
+        "account_number": "606100",
+        "account_title": "Achats stockés - Matières premières",
+        "debit_amount": 1000.00,
+        "credit_amount": 0.00
+      },
+      {
+        "account_number": "44566",
+        "account_title": "TVA déductible sur autres biens et services",
+        "debit_amount": 200.00,
+        "credit_amount": 0.00
+      },
+      {
+        "account_number": "401001",
+        "account_title": "Fournisseurs - Fournisseur SARL",
+        "debit_amount": 0.00,
+        "credit_amount": 1200.00
+      }
+    ],
+    "is_balanced": true,
+    "total_debit": 1200.00,
+    "total_credit": 1200.00
+  }
+}
+```
+
+#### Asynchronous Processing
+
+Process invoices in the background with task tracking for better performance and scalability.
+
+```http
+POST /api/accounting/process-invoice-async
+Content-Type: multipart/form-data
+```
+
+**Parameters:** Same as synchronous processing
+
+**Response:**
+```json
+{
+  "task_id": "celery-task-uuid-here",
+  "status": "pending",
+  "message": "Invoice processing started",
+  "estimated_completion_time": 30
+}
+```
+
+### Batch Processing
+
+Process multiple invoices simultaneously with parallel execution and progress tracking.
+
+```http
+POST /api/accounting/process-batch-async
+Content-Type: multipart/form-data
+```
+
+**Parameters:**
+- `files[]`: Multiple invoice files (array)
+- `max_workers`: Parallel processing limit (default: 3, max: 10)
+- `export_formats`: Export formats for all invoices
+- `auto_export`: Automatic export flag
+- `batch_name`: Optional batch identifier
+
+**Response:**
+```json
+{
+  "batch_id": "batch-uuid-here",
+  "task_ids": ["task-1", "task-2", "task-3"],
+  "total_files": 3,
+  "estimated_completion_time": 90,
+  "status": "processing"
+}
+```
+
+### Task Management
+
+#### Get Task Status
+
+Monitor the progress of asynchronous processing tasks.
+
+```http
+GET /api/accounting/task-status/{task_id}
+```
+
+**Response:**
+```json
+{
+  "task_id": "celery-task-uuid",
+  "status": "PROGRESS",
+  "result": null,
+  "progress": {
+    "current": 2,
+    "total": 4,
+    "status": "Generating journal entries...",
+    "phase": "journal_generation",
+    "percentage": 50
+  },
+  "error": null,
+  "meta": {
+    "invoice_id": "INV-a1b2c3d4-231201",
+    "file_path": "/uploads/invoice.pdf",
+    "processing_started": "2023-12-01T10:30:00Z"
+  }
+}
+```
+
+#### Get Batch Status
+
+Monitor batch processing progress with detailed per-file status.
+
+```http
+GET /api/accounting/batch-status/{batch_id}
+```
+
+**Response:**
+```json
+{
+  "batch_id": "batch-uuid",
+  "overall_status": "processing",
+  "completed": 2,
+  "total": 5,
+  "failed": 0,
+  "progress_percentage": 40,
+  "individual_tasks": [
+    {
+      "task_id": "task-1",
+      "filename": "invoice1.pdf",
+      "status": "SUCCESS",
+      "invoice_id": "INV-123"
+    },
+    {
+      "task_id": "task-2",
+      "filename": "invoice2.pdf", 
+      "status": "PROGRESS",
+      "progress": 75
+    }
+  ]
+}
+```
+
+---
+
+## Data Management
+
+### Invoice Retrieval
+
+#### Get All Invoices
+
+Retrieve processed invoices with filtering, sorting, and pagination.
+
+```http
+GET /api/accounting/invoices
+```
+
+**Query Parameters:**
+- `limit`: Number of invoices to return (default: 50, max: 1000)
+- `skip`: Number of invoices to skip for pagination (default: 0)
+- `sort_by`: Sort field (created_at, invoice_date, total_amount_ttc, vendor_name)
+- `sort_order`: Sort direction (-1 for desc, 1 for asc)
+- `include_extraction_data`: Include full extraction details (default: false)
+- `status_filter`: Filter by processing status
+- `date_from`: Filter invoices from date (ISO format)
+- `date_to`: Filter invoices to date (ISO format)
+- `vendor_name`: Filter by vendor name (partial match)
+- `min_amount`: Minimum invoice amount filter
+- `max_amount`: Maximum invoice amount filter
+
+**Response:**
+```json
+{
+  "invoices": [
+    {
+      "invoice_id": "INV-a1b2c3d4-231201",
+      "file_name": "invoice.pdf",
+      "processing_status": "completed",
+      "created_at": "2023-12-01T10:30:00Z",
+      "vendor_name": "Fournisseur SARL",
+      "invoice_number": "FAC-2023-001",
+      "total_amount_ttc": 1200.00,
+      "export_paths": {
+        "csv": "/storage/exports/INV-123.csv",
+        "json": "/storage/exports/INV-123.json"
+      }
+    }
+  ],
+  "total_count": 150,
+  "has_more": true,
+  "next_skip": 50
+}
+```
+
+#### Get Single Invoice
+
+Retrieve complete details for a specific invoice including all processing phases.
+
+```http
+GET /api/accounting/accounting-entry/{entry_id}
+```
+
+**Response includes:**
+- Original extraction data with confidence scores
+- Account imputation proposals with reasoning
+- Final journal entries with validation results
+- Export file paths and formats
+- Processing metrics and timing
+- Error logs if any issues occurred
+
+### Search and Analytics
+
+#### Search Invoices
+
+Advanced search across invoice content and metadata.
+
+```http
+POST /api/accounting/invoices/search
+```
+
+**Request Body:**
+```json
+{
+  "query": "Fournisseur SARL",
+  "search_fields": ["vendor_name", "invoice_number", "line_items.description"],
+  "filters": {
+    "amount_range": [100, 5000],
+    "date_range": ["2023-01-01", "2023-12-31"],
+    "processing_status": ["completed", "exported"]
+  },
+  "limit": 20,
+  "include_highlights": true
+}
+```
+
+#### Analytics Dashboard Data
+
+Get aggregated analytics for dashboard display.
+
+```http
+GET /api/accounting/analytics/dashboard
+```
+
+**Query Parameters:**
+- `period`: Time period (daily, weekly, monthly, yearly)
+- `date_from`: Start date for analytics
+- `date_to`: End date for analytics
+
+**Response:**
+```json
+{
+  "summary": {
+    "total_invoices_processed": 1250,
+    "total_amount_processed": 125000.00,
+    "average_processing_time": 15.3,
+    "success_rate": 98.5
+  },
+  "processing_trends": [
+    {
+      "date": "2023-12-01",
+      "count": 45,
+      "total_amount": 12500.00,
+      "avg_confidence": 0.94
+    }
+  ],
+  "vendor_statistics": [
+    {
+      "vendor_name": "Fournisseur SARL",
+      "invoice_count": 25,
+      "total_amount": 30000.00,
+      "avg_processing_time": 12.1
+    }
+  ]
+}
+```
+
+---
+
+## Bulk Operations
+
+### Bulk Status Updates
+
+Update processing status for multiple invoices simultaneously.
+
+```http
+POST /api/accounting/bulk-operations/status
+```
+
+**Request Body:**
+```json
+{
+  "invoice_ids": ["INV-123", "INV-124", "INV-125"],
+  "status": "approved",
+  "user_id": "user123",
+  "notes": "Batch approval after review"
+}
+```
+
+### Bulk Export
+
+Generate exports for multiple invoices in specified formats.
+
+```http
+POST /api/accounting/bulk-operations/export
+```
+
+**Request Body:**
+```json
+{
+  "invoice_ids": ["INV-123", "INV-124"],
+  "export_formats": ["csv", "sage", "json"],
+  "filename_prefix": "batch_export_2023",
+  "include_headers": true,
+  "compression": "zip"
+}
+```
+
+**Response:**
+```json
+{
+  "export_task_id": "export-task-uuid",
+  "estimated_completion_time": 60,
+  "file_count": 6,
+  "formats_requested": ["csv", "sage", "json"]
+}
+```
+
+### Bulk Reprocessing
+
+Reprocess multiple invoices with updated parameters or different LLM providers.
+
+```http
+POST /api/accounting/bulk-operations/reprocess
+```
+
+**Request Body:**
+```json
+{
+  "invoice_ids": ["INV-123", "INV-124"],
+  "reprocess_phases": ["extraction", "imputation"],
+  "llm_provider": "gemini",
+  "force_reprocess": true,
+  "preserve_manual_edits": false
+}
+```
+
+---
+
+## Payment Management
+
+### Payment Status Updates
+
+Manage payment status and generate corresponding financial journal entries.
+
+#### Update Payment Status
+
+```http
+POST /api/accounting/payment-status/{invoice_id}
+```
+
+**Request Body:**
+```json
+{
+  "payment_status": "paid",
+  "payment_date": "2023-12-15",
+  "payment_amount": 1200.00,
+  "payment_method": "virement_bancaire",
+  "payment_reference": "VIR-2023-001",
+  "bank_account": "512000",
+  "generate_journal_entry": true
+}
+```
+
+**Payment Status Options:**
+- `unpaid`: Invoice issued but payment not received
+- `paid`: Full payment received and reconciled  
+- `partially_paid`: Partial payment with remaining balance
+- `overdue`: Payment past due date
+- `cancelled`: Invoice cancelled or voided
+
+#### Get Payment History
+
+```http
+GET /api/accounting/payment-history/{invoice_id}
+```
+
+**Response:**
+```json
+{
+  "invoice_id": "INV-123",
+  "payment_history": [
+    {
+      "payment_date": "2023-12-15",
+      "amount": 600.00,
+      "method": "virement_bancaire",
+      "reference": "VIR-2023-001",
+      "journal_entry_id": "JE-456"
+    },
+    {
+      "payment_date": "2023-12-20", 
+      "amount": 600.00,
+      "method": "virement_bancaire",
+      "reference": "VIR-2023-002",
+      "journal_entry_id": "JE-457"
+    }
+  ],
+  "total_paid": 1200.00,
+  "remaining_balance": 0.00,
+  "current_status": "paid"
+}
+```
+
+---
+
+## Export and Integration
+
+### Export Management
+
+#### Generate Exports
+
+Create accounting exports in various formats for ERP integration.
+
+```http
+POST /api/accounting/export/{invoice_id}
+```
+
+**Request Body:**
+```json
+{
+  "formats": ["csv", "xml", "sage", "fec"],
+  "include_payments": true,
+  "date_format": "DD/MM/YYYY",
+  "currency_format": "european",
+  "filename_template": "{invoice_number}_{format}_{date}"
+}
+```
+
+**Supported Export Formats:**
+- **CSV**: Comma-separated values for spreadsheet import
+- **XML**: Structured XML for system integration
+- **JSON**: JavaScript Object Notation for API integration
+- **Sage**: Sage accounting software format
+- **FEC**: French regulatory format (Fichier des Écritures Comptables)
+- **CEGID**: CEGID accounting software format
+- **EBP**: EBP accounting software format
+
+#### Download Export Files
+
+```http
+GET /api/accounting/export-file/{export_id}
+```
+
+Returns the requested export file with appropriate MIME type and filename.
+
+### Webhook Integration
+
+#### Configure Webhooks
+
+Set up webhooks for real-time notifications of processing events.
+
+```http
+POST /api/accounting/webhooks
+```
+
+**Request Body:**
+```json
+{
+  "url": "https://your-system.com/webhook",
+  "events": ["invoice.processed", "payment.updated", "export.completed"],
+  "secret": "your-webhook-secret",
+  "active": true
+}
+```
+
+**Available Events:**
+- `invoice.uploaded`: New invoice uploaded to system
+- `invoice.processed`: Invoice processing completed
+- `invoice.failed`: Invoice processing failed
+- `payment.updated`: Payment status changed
+- `export.completed`: Export generation completed
+- `batch.completed`: Batch processing completed
+
+---
+
+## Error Handling and Validation
+
+### Error Response Format
+
+All API errors follow a consistent format for easy handling:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid file format provided",
+    "details": {
+      "field": "file",
+      "allowed_formats": ["pdf", "jpg", "png", "tiff"],
+      "provided_format": "doc"
+    },
+    "request_id": "req-uuid-here",
+    "timestamp": "2023-12-01T10:30:00Z"
+  }
+}
+```
+
+### Common Error Codes
+
+- `VALIDATION_ERROR`: Request validation failed
+- `FILE_TOO_LARGE`: Uploaded file exceeds size limit
+- `UNSUPPORTED_FORMAT`: File format not supported
+- `PROCESSING_FAILED`: Invoice processing failed
+- `INSUFFICIENT_CONFIDENCE`: Extraction confidence too low
+- `ACCOUNT_MAPPING_FAILED`: PCG account mapping failed
+- `JOURNAL_BALANCE_ERROR`: Journal entry doesn't balance
+- `RATE_LIMIT_EXCEEDED`: API rate limit exceeded
+- `AUTHENTICATION_REQUIRED`: Valid authentication required
+- `PERMISSION_DENIED`: Insufficient permissions
+
+### Validation Rules
+
+The API enforces comprehensive validation:
+
+**File Validation:**
+- Maximum file size: 50MB
+- Supported formats: PDF, JPG, PNG, TIFF
+- File integrity checks
+
+**Data Validation:**
+- Invoice amounts must be positive numbers
+- Dates must be in valid ISO format
+- VAT rates must match French standard rates
+- Account numbers must exist in PCG
+
+**Business Logic Validation:**
+- Journal entries must balance (debits = credits)
+- Payment amounts cannot exceed invoice totals
+- Due dates must be after invoice dates
+
+---
+
+## Rate Limiting and Authentication
+
+### Rate Limits
+
+API endpoints have different rate limits based on resource intensity:
+
+- **File Upload Endpoints**: 10 requests per minute
+- **Processing Endpoints**: 5 requests per minute  
+- **Data Retrieval**: 100 requests per minute
+- **Bulk Operations**: 2 requests per minute
+
+### Authentication
+
+All API requests require authentication using API keys:
+
+```http
+Authorization: Bearer your-api-key-here
+```
+
+API keys can be generated and managed through the admin interface with configurable permissions and expiration dates.
+
+The Accounting API provides comprehensive functionality for automated invoice processing while maintaining the flexibility and reliability required for enterprise accounting workflows with French regulatory compliance. 

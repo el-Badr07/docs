@@ -1,0 +1,378 @@
+---
+title: "Conversation Models"
+description: "Data models for Textra's multi-conversation AI chat system with context management and agent integration"
+---
+
+# Conversation Models
+
+The Conversation Models define the sophisticated data structures that power Textra's multi-conversation AI chat interface. These Pydantic-based models ensure data integrity, enable intelligent conversation management, and provide seamless integration between chat functionality and the accounting automation pipeline.
+
+## Core Model Architecture
+
+### Design Philosophy
+
+The conversation models are designed around several key principles:
+
+**Multi-Conversation Support**: Each user can maintain multiple simultaneous conversation threads without context interference
+**Context Preservation**: Rich context management that maintains conversation state and document relationships
+**Agent Integration**: Seamless integration with specialized AI agents for different accounting tasks
+**Scalability**: Efficient data structures that support thousands of concurrent conversations
+**Audit Trail**: Complete conversation history for compliance and analysis purposes
+
+### Data Persistence Strategy
+
+**MongoDB Integration**: Conversations are stored as documents with embedded message arrays for optimal performance
+**Referential Integrity**: Strong relationships between conversations, messages, and accounting documents
+**Indexing Strategy**: Optimized indexes for fast conversation retrieval and search operations
+**Archival Support**: Intelligent archiving of old conversations while maintaining accessibility
+
+---
+
+## Core Conversation Models
+
+### Conversation Model
+
+The primary model representing a complete conversation thread with all its metadata and context.
+
+#### Essential Properties
+
+**Conversation Identity**:
+- **conversation_id**: Globally unique identifier for the conversation
+- **title**: User-friendly conversation title (auto-generated or user-defined)
+- **status**: Current conversation status (active, archived, completed, paused)
+- **conversation_type**: Type classification (invoice_analysis, general_chat, document_review, compliance_check)
+
+**Temporal Tracking**:
+- **created_at**: Timestamp of conversation creation
+- **updated_at**: Last modification timestamp
+- **last_activity**: Timestamp of last user or agent activity
+- **duration**: Total conversation duration in seconds
+
+**User Association**:
+- **user_id**: Owner of the conversation
+- **shared_with**: List of users with conversation access
+- **permission_level**: Access permissions for shared users
+
+#### Context Management
+
+**Document Context**:
+- **document_ids**: List of invoices, receipts, or other documents being discussed
+- **active_documents**: Currently focused documents in the conversation
+- **document_metadata**: Cached metadata for quick access to document information
+
+**Business Context**:
+- **company_context**: Company-specific information relevant to the conversation
+- **accounting_period**: Relevant accounting period for the discussion
+- **transaction_focus**: Specific transactions or financial events being analyzed
+
+**Conversation State**:
+- **current_topic**: Current discussion topic extracted from recent messages
+- **conversation_flow**: Structured representation of conversation progression
+- **pending_actions**: Actions that need to be completed based on conversation content
+
+#### Agent Configuration
+
+**Available Agents**:
+- **enabled_agents**: List of AI agents available for this conversation
+- **agent_preferences**: User preferences for agent behavior and response style
+- **routing_rules**: Custom rules for routing queries to specific agents
+
+**Agent History**:
+- **agent_usage_stats**: Statistics on which agents have been used most
+- **successful_interactions**: Count of successful agent interactions
+- **user_feedback**: User satisfaction ratings for agent responses
+
+### Message Model
+
+Represents individual messages within conversations, including both user messages and AI agent responses.
+
+#### Message Identity and Classification
+
+**Message Properties**:
+- **message_id**: Unique identifier for the message
+- **conversation_id**: Reference to parent conversation
+- **sender**: Message sender (user_id or agent_type)
+- **sender_type**: Classification (human, ai_agent, system)
+- **timestamp**: Exact message timestamp
+
+**Content Structure**:
+- **content**: Primary message content (text, formatted text, or structured data)
+- **content_type**: Type of content (text, markdown, json, structured_response)
+- **language**: Detected or specified language of the message
+- **formatting**: Rich formatting information for display
+
+#### Agent-Specific Metadata
+
+**AI Agent Messages**:
+- **agent_type**: Specific agent that generated the response (invoice_qa, calculation, retrieval, mongodb)
+- **processing_time**: Time taken to generate the response
+- **confidence_score**: Agent's confidence in the response accuracy
+- **reasoning_chain**: Step-by-step reasoning process used by the agent
+
+**Query Context**:
+- **query_parameters**: Extracted parameters from user queries
+- **referenced_documents**: Documents referenced in the message
+- **triggered_actions**: Actions triggered by the message (searches, calculations, etc.)
+- **follow_up_suggestions**: Suggested follow-up questions or actions
+
+#### Response Enhancement
+
+**Rich Content Support**:
+- **attachments**: File attachments or generated reports
+- **embedded_data**: Structured data embedded in responses (tables, charts)
+- **action_buttons**: Interactive elements for user actions
+- **quick_replies**: Suggested quick response options
+
+**User Experience Features**:
+- **read_status**: Whether the message has been read by recipients
+- **reaction_data**: User reactions or feedback on the message
+- **edit_history**: History of message edits (for user messages)
+- **translation_data**: Translations of the message in different languages
+
+### ConversationContext Model
+
+Manages the sophisticated context system that enables intelligent conversation flow and agent behavior.
+
+#### Document Context Management
+
+**Active Document Tracking**:
+- **primary_documents**: Main documents being discussed
+- **secondary_documents**: Related documents that provide context
+- **document_relationships**: Relationships between different documents
+- **access_permissions**: User permissions for each referenced document
+
+**Document State**:
+- **processing_status**: Current processing status of referenced documents
+- **last_accessed**: When each document was last accessed in conversation
+- **modification_tracking**: Changes to documents since conversation started
+- **version_tracking**: Document version information for consistency
+
+#### Conversation Memory
+
+**Short-Term Memory**:
+- **recent_topics**: Topics discussed in the last few messages
+- **active_queries**: Ongoing queries or investigations
+- **pending_clarifications**: Questions awaiting user clarification
+- **current_focus**: Current area of focus in the conversation
+
+**Long-Term Memory**:
+- **conversation_summary**: High-level summary of conversation content
+- **key_decisions**: Important decisions made during the conversation
+- **recurring_themes**: Topics that appear frequently in the conversation
+- **user_preferences**: Learned preferences about how the user likes information presented
+
+#### Business Intelligence Context
+
+**Analytical Context**:
+- **calculation_results**: Results from financial calculations performed
+- **trend_analysis**: Identified trends in the data being discussed
+- **compliance_status**: Compliance-related information relevant to the conversation
+- **risk_indicators**: Identified risks or issues requiring attention
+
+**Workflow Integration**:
+- **triggered_processes**: Accounting processes triggered from the conversation
+- **approval_requests**: Requests for approval generated from conversation
+- **export_requests**: Export operations initiated through conversation
+- **notification_settings**: Notification preferences for conversation events
+
+---
+
+## Specialized Models
+
+### ConversationTemplate Model
+
+Defines reusable conversation templates for common accounting workflows.
+
+#### Template Structure
+
+**Template Definition**:
+- **template_id**: Unique identifier for the template
+- **template_name**: Human-readable template name
+- **description**: Detailed description of template purpose and use cases
+- **category**: Template category (monthly_review, compliance_check, vendor_analysis)
+
+**Initialization Parameters**:
+- **required_parameters**: Parameters that must be provided when using template
+- **optional_parameters**: Optional parameters for template customization
+- **default_values**: Default values for template parameters
+- **validation_rules**: Rules for validating template parameters
+
+#### Template Behavior
+
+**Conversation Flow**:
+- **initial_messages**: Pre-defined messages to start the conversation
+- **suggested_questions**: Common questions for this type of conversation
+- **workflow_steps**: Recommended steps for completing the conversation objective
+- **completion_criteria**: Criteria for determining when the conversation objective is met
+
+**Agent Configuration**:
+- **recommended_agents**: Agents most useful for this template type
+- **agent_priorities**: Priority order for agent routing
+- **specialized_prompts**: Template-specific prompts for better agent performance
+- **context_requirements**: Required context information for optimal performance
+
+### ConversationAnalytics Model
+
+Captures detailed analytics and performance metrics for conversations.
+
+#### Usage Analytics
+
+**Conversation Metrics**:
+- **message_count**: Total number of messages in conversation
+- **user_message_count**: Number of user messages
+- **agent_message_count**: Number of agent responses
+- **average_response_time**: Average time for agent responses
+
+**Engagement Metrics**:
+- **session_duration**: Total time spent in conversation
+- **active_time**: Time when user was actively engaged
+- **idle_periods**: Periods of inactivity during conversation
+- **return_frequency**: How often user returns to the conversation
+
+#### Performance Analytics
+
+**Agent Performance**:
+- **agent_usage_distribution**: How different agents were used
+- **agent_success_rates**: Success rates for different agent types
+- **user_satisfaction_scores**: User feedback on agent responses
+- **response_quality_metrics**: Automated quality assessment of responses
+
+**Query Analysis**:
+- **query_complexity**: Analysis of query complexity levels
+- **resolution_rates**: Percentage of queries successfully resolved
+- **escalation_frequency**: How often queries required human intervention
+- **topic_distribution**: Distribution of topics discussed
+
+#### Business Impact
+
+**Workflow Efficiency**:
+- **tasks_completed**: Number of accounting tasks completed through conversation
+- **time_savings**: Estimated time saved compared to manual processes
+- **error_reduction**: Reduction in errors compared to manual processes
+- **process_improvements**: Identified opportunities for process improvement
+
+**Document Interaction**:
+- **documents_accessed**: Number of documents accessed through conversation
+- **processing_triggered**: Number of processing operations initiated
+- **exports_generated**: Number of exports or reports generated
+- **compliance_checks**: Number of compliance validations performed
+
+---
+
+## Model Relationships and Integration
+
+### Cross-Model Relationships
+
+#### Conversation-Document Links
+
+**Document References**:
+- **Direct References**: Explicit document IDs mentioned in conversations
+- **Implicit References**: Documents identified through context analysis
+- **Processing Relationships**: Documents processed as a result of conversation
+- **Export Relationships**: Documents exported based on conversation requests
+
+**Bidirectional Linking**:
+- **Document-to-Conversation**: Track which conversations discuss each document
+- **Conversation-to-Document**: Track all documents referenced in each conversation
+- **Temporal Relationships**: When documents were accessed relative to conversation flow
+- **Permission Inheritance**: How document permissions affect conversation access
+
+#### User-Conversation Relationships
+
+**Ownership Model**:
+- **Primary Owner**: User who created the conversation
+- **Shared Access**: Users granted access to view or participate
+- **Permission Levels**: Different levels of access (read, write, admin)
+- **Inheritance Rules**: How permissions are inherited and managed
+
+**Collaboration Features**:
+- **Multi-User Conversations**: Support for multiple users in same conversation
+- **Handoff Mechanisms**: Transferring conversation ownership
+- **Notification Systems**: Alerting users about conversation updates
+- **Privacy Controls**: Ensuring sensitive conversations remain private
+
+### Integration with Accounting Pipeline
+
+#### Process Integration
+
+**Workflow Triggers**:
+- **Processing Initiation**: Starting invoice processing from conversation
+- **Status Monitoring**: Tracking processing progress within conversation
+- **Result Delivery**: Delivering processing results back to conversation
+- **Error Handling**: Managing processing errors through conversation interface
+
+**Data Synchronization**:
+- **Real-Time Updates**: Keeping conversation context synchronized with processing pipeline
+- **State Management**: Managing conversation state during long-running processes
+- **Conflict Resolution**: Handling conflicts between conversation context and system state
+- **Recovery Mechanisms**: Recovering conversation state after system interruptions
+
+---
+
+## Performance and Optimization
+
+### Scalability Features
+
+#### Efficient Data Structures
+
+**Memory Optimization**:
+- **Lazy Loading**: Load conversation details only when needed
+- **Message Pagination**: Efficient handling of conversations with many messages
+- **Context Compression**: Compress large context objects for storage efficiency
+- **Archive Management**: Automatic archiving of old conversations
+
+**Database Optimization**:
+- **Index Strategy**: Optimized indexes for common query patterns
+- **Aggregation Pipelines**: Efficient aggregation for analytics queries
+- **Sharding Strategy**: Horizontal scaling for large conversation volumes
+- **Caching Integration**: Redis caching for frequently accessed conversations
+
+#### Real-Time Performance
+
+**WebSocket Integration**:
+- **Message Streaming**: Real-time message delivery for active conversations
+- **Typing Indicators**: Real-time typing indicators for better user experience
+- **Presence Management**: Track user presence in conversations
+- **Connection Management**: Efficient WebSocket connection handling
+
+**Response Optimization**:
+- **Agent Response Streaming**: Stream long agent responses in chunks
+- **Predictive Loading**: Pre-load likely-needed conversation data
+- **Background Processing**: Process non-urgent updates in background
+- **Resource Pooling**: Efficient resource management for concurrent conversations
+
+---
+
+## Security and Privacy
+
+### Data Protection
+
+#### Conversation Security
+
+**Access Control**:
+- **Role-Based Permissions**: Control access based on user roles
+- **Conversation-Level Security**: Granular security for individual conversations
+- **Content Filtering**: Filter sensitive information in conversations
+- **Audit Logging**: Complete audit trail of conversation access and modifications
+
+**Privacy Protection**:
+- **Data Encryption**: Encrypt sensitive conversation content
+- **Anonymization**: Remove or anonymize personal information when required
+- **Retention Policies**: Automatic deletion of conversations based on retention rules
+- **Export Controls**: Control what conversation data can be exported
+
+#### Compliance Integration
+
+**Regulatory Compliance**:
+- **GDPR Compliance**: Support for GDPR data protection requirements
+- **Right to Deletion**: Ability to completely delete user conversation data
+- **Data Portability**: Export conversation data in standard formats
+- **Consent Management**: Track and manage user consent for data processing
+
+**Audit Requirements**:
+- **Conversation Preservation**: Preserve conversations for required retention periods
+- **Immutable Records**: Ensure conversation records cannot be tampered with
+- **Access Tracking**: Track who accessed what conversation data when
+- **Compliance Reporting**: Generate reports for regulatory compliance
+
+The Conversation Models provide a robust foundation for intelligent, context-aware chat interactions that seamlessly integrate with accounting workflows while maintaining the performance, security, and compliance standards required for enterprise financial applications. 

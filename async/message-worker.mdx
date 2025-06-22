@@ -1,0 +1,346 @@
+---
+title: "Message Worker"
+description: "RabbitMQ-based message processing system for reliable inter-service communication and event-driven workflows"
+---
+
+# Message Worker
+
+The Message Worker system provides robust, scalable message processing capabilities built on RabbitMQ, enabling reliable inter-service communication and event-driven workflows throughout the Textra platform. This system ensures that all components can communicate efficiently while maintaining message delivery guarantees and system resilience.
+
+## Message Processing Architecture
+
+### Event-Driven Communication
+
+The Message Worker system implements a sophisticated event-driven architecture that enables:
+
+**Decoupled Services**: Services communicate through messages without direct dependencies
+**Scalable Processing**: Horizontal scaling of message processing capabilities
+**Reliable Delivery**: Guaranteed message delivery with acknowledgment systems
+**Event Sourcing**: Complete audit trail of all system events and state changes
+**Real-Time Updates**: Immediate propagation of state changes across the system
+
+### Message Categories
+
+**Processing Events**:
+- **invoice.uploaded**: New invoice document uploaded to the system
+- **invoice.processing_started**: Invoice processing pipeline initiated
+- **invoice.phase_completed**: Individual processing phase completed
+- **invoice.processing_completed**: Complete invoice processing finished
+- **invoice.processing_failed**: Invoice processing encountered errors
+
+**Workflow Events**:
+- **batch.created**: New batch processing job created
+- **batch.progress_updated**: Batch processing progress updates
+- **batch.completed**: Batch processing completed successfully
+- **export.requested**: Export generation requested
+- **export.completed**: Export generation completed
+
+**System Events**:
+- **user.authenticated**: User authentication events
+- **conversation.created**: New conversation thread created
+- **payment.status_changed**: Payment status updates
+- **system.health_check**: System health monitoring events
+
+---
+
+## RabbitMQ Integration
+
+### Message Broker Configuration
+
+#### Exchange and Queue Topology
+
+**Topic Exchanges**:
+- **textra.processing**: Exchange for all processing-related events
+- **textra.workflow**: Exchange for workflow and orchestration events
+- **textra.system**: Exchange for system-level events
+- **textra.notifications**: Exchange for user notification events
+
+**Queue Structure**:
+```
+Processing Queues:
+├── invoice.processing.high_priority
+├── invoice.processing.normal
+├── invoice.processing.batch
+└── invoice.processing.retry
+
+Workflow Queues:
+├── workflow.orchestration
+├── workflow.notifications
+└── workflow.analytics
+
+System Queues:
+├── system.monitoring
+├── system.maintenance
+└── system.alerts
+```
+
+**Routing Patterns**:
+- **Direct Routing**: Point-to-point message delivery for specific operations
+- **Topic Routing**: Pattern-based routing for event categories
+- **Fanout Routing**: Broadcast messages to multiple consumers
+- **Header Routing**: Content-based routing using message headers
+
+#### Message Durability and Persistence
+
+**Durable Messages**:
+- **Critical Events**: All processing and workflow events marked as durable
+- **Transient Events**: System monitoring events with temporary persistence
+- **Configurable Persistence**: Per-message-type persistence configuration
+- **Storage Optimization**: Automatic cleanup of expired messages
+
+**Queue Durability**:
+- **Persistent Queues**: All primary queues configured for persistence
+- **Recovery Procedures**: Automatic queue recovery after broker restarts
+- **Backup Strategies**: Regular backup of queue configurations and states
+- **Disaster Recovery**: Cross-region queue replication for disaster recovery
+
+### Message Processing Patterns
+
+#### Publisher-Subscriber Pattern
+
+**Event Publishing**:
+- **Structured Events**: Standardized event schema with versioning
+- **Metadata Enrichment**: Automatic addition of timestamps, correlation IDs
+- **Routing Key Generation**: Intelligent routing key generation
+- **Delivery Confirmation**: Publisher confirmation for reliable delivery
+
+**Event Subscription**:
+- **Selective Subscription**: Services subscribe only to relevant events
+- **Dynamic Subscription**: Runtime subscription management
+- **Load Balancing**: Even distribution of messages across consumers
+- **Consumer Groups**: Grouped consumers for scalable processing
+
+#### Request-Response Pattern
+
+**Synchronous Communication**:
+- **RPC over Messages**: Remote procedure calls using message queues
+- **Correlation Tracking**: Request-response correlation using unique IDs
+- **Timeout Management**: Configurable timeouts for request-response cycles
+- **Error Handling**: Comprehensive error handling for failed requests
+
+**Asynchronous Responses**:
+- **Callback Queues**: Dedicated queues for asynchronous responses
+- **Future Results**: Promise-based result handling
+- **Progress Updates**: Intermediate progress updates for long-running operations
+- **Result Caching**: Caching of responses for repeated requests
+
+---
+
+## Message Processing Workflows
+
+### Invoice Processing Workflow
+
+#### Processing Pipeline Integration
+
+**Phase-Based Messaging**:
+1. **Phase 1 Start**: `invoice.extraction.started`
+2. **Phase 1 Complete**: `invoice.extraction.completed`
+3. **Phase 2 Start**: `invoice.imputation.started`
+4. **Phase 2 Complete**: `invoice.imputation.completed`
+5. **Phase 3 Start**: `invoice.journal.started`
+6. **Phase 3 Complete**: `invoice.journal.completed`
+7. **Phase 4 Start**: `invoice.validation.started`
+8. **Phase 4 Complete**: `invoice.validation.completed`
+9. **Phase 5 Start**: `invoice.export.started`
+10. **Phase 5 Complete**: `invoice.export.completed`
+
+**Error Handling Messages**:
+- **Processing Errors**: `invoice.processing.error` with detailed error information
+- **Retry Notifications**: `invoice.processing.retry` for retry attempts
+- **Failure Notifications**: `invoice.processing.failed` for permanent failures
+- **Recovery Messages**: `invoice.processing.recovered` for successful recovery
+
+#### Real-Time Updates
+
+**Progress Streaming**:
+- **Live Progress**: Real-time progress updates during processing
+- **Phase Transitions**: Immediate notification of phase changes
+- **Status Changes**: Instant status updates for UI synchronization
+- **Performance Metrics**: Real-time processing performance data
+
+**User Notifications**:
+- **Processing Started**: Notification when processing begins
+- **Processing Completed**: Notification when processing finishes
+- **Error Notifications**: Immediate notification of processing errors
+- **Result Availability**: Notification when results are ready
+
+### Batch Processing Coordination
+
+#### Multi-Invoice Orchestration
+
+**Batch Lifecycle Events**:
+- **Batch Created**: `batch.created` with batch metadata
+- **Batch Started**: `batch.processing.started` when processing begins
+- **Invoice Added**: `batch.invoice.added` when invoices are added to batch
+- **Invoice Completed**: `batch.invoice.completed` for individual completions
+- **Batch Completed**: `batch.processing.completed` when all invoices done
+
+**Progress Aggregation**:
+- **Individual Progress**: Progress updates for each invoice in batch
+- **Aggregate Progress**: Combined progress across all batch items
+- **Completion Tracking**: Tracking of completed vs. pending items
+- **Error Aggregation**: Aggregation of errors across batch items
+
+#### Resource Coordination
+
+**Worker Coordination**:
+- **Worker Assignment**: Messages for assigning workers to batch items
+- **Load Balancing**: Messages for balancing load across workers
+- **Resource Allocation**: Messages for allocating system resources
+- **Completion Coordination**: Messages for coordinating batch completion
+
+**Dependency Management**:
+- **Dependency Tracking**: Messages for tracking inter-task dependencies
+- **Prerequisite Completion**: Notifications when prerequisites are met
+- **Blocking Resolution**: Messages for resolving processing blocks
+- **Workflow Continuation**: Messages for continuing suspended workflows
+
+---
+
+## Advanced Message Features
+
+### Message Routing Intelligence
+
+#### Content-Based Routing
+
+**Smart Routing Rules**:
+- **Priority Routing**: High-priority messages routed to dedicated queues
+- **Content Analysis**: Routing based on message content analysis
+- **Load-Based Routing**: Routing based on queue load and worker availability
+- **Geographic Routing**: Routing based on user or data location
+
+**Dynamic Routing**:
+- **Runtime Rule Updates**: Dynamic updating of routing rules
+- **A/B Testing**: Routing for testing different processing paths
+- **Canary Deployments**: Gradual routing to new service versions
+- **Fallback Routing**: Automatic fallback routing during service issues
+
+#### Message Transformation
+
+**Format Transformation**:
+- **Schema Evolution**: Handling of message schema changes
+- **Version Compatibility**: Backward compatibility for message versions
+- **Format Conversion**: Automatic conversion between message formats
+- **Enrichment**: Automatic enrichment of messages with additional data
+
+**Content Processing**:
+- **Message Validation**: Validation of message content and structure
+- **Data Sanitization**: Sanitization of sensitive data in messages
+- **Compression**: Automatic compression of large messages
+- **Encryption**: Encryption of sensitive message content
+
+### Message Persistence and Replay
+
+#### Event Sourcing
+
+**Event Store Integration**:
+- **Event Persistence**: Persistent storage of all system events
+- **Event Replay**: Ability to replay events for system recovery
+- **State Reconstruction**: Reconstruction of system state from events
+- **Audit Trail**: Complete audit trail through event history
+
+**Snapshot Management**:
+- **State Snapshots**: Periodic snapshots of system state
+- **Incremental Updates**: Incremental updates from snapshots
+- **Snapshot Optimization**: Optimization of snapshot storage and retrieval
+- **Recovery Acceleration**: Fast recovery using snapshots and incremental events
+
+#### Message Archival
+
+**Long-Term Storage**:
+- **Archive Policies**: Configurable archival policies for different message types
+- **Compressed Storage**: Compressed storage for archived messages
+- **Retrieval Capabilities**: Efficient retrieval of archived messages
+- **Compliance Retention**: Retention policies for regulatory compliance
+
+**Data Lifecycle Management**:
+- **Automatic Archival**: Automatic archival based on age and access patterns
+- **Purge Policies**: Automatic purging of expired messages
+- **Storage Optimization**: Optimization of storage usage and costs
+- **Access Patterns**: Analysis of access patterns for optimization
+
+---
+
+## Performance and Scalability
+
+### High-Performance Message Processing
+
+#### Throughput Optimization
+
+**Message Batching**:
+- **Batch Processing**: Processing multiple messages in batches
+- **Adaptive Batching**: Dynamic batch sizes based on load
+- **Batch Acknowledgment**: Efficient acknowledgment of message batches
+- **Batch Error Handling**: Error handling for batch processing
+
+**Connection Pooling**:
+- **Connection Management**: Efficient management of broker connections
+- **Pool Sizing**: Optimal sizing of connection pools
+- **Connection Reuse**: Reuse of connections across message operations
+- **Connection Health**: Monitoring and maintenance of connection health
+
+#### Scalability Features
+
+**Horizontal Scaling**:
+- **Consumer Scaling**: Automatic scaling of message consumers
+- **Queue Partitioning**: Partitioning of queues for parallel processing
+- **Load Distribution**: Even distribution of load across consumers
+- **Cluster Management**: Management of RabbitMQ clusters
+
+**Performance Monitoring**:
+- **Throughput Metrics**: Real-time monitoring of message throughput
+- **Latency Tracking**: Tracking of message processing latency
+- **Queue Depth Monitoring**: Monitoring of queue depths and backlogs
+- **Consumer Performance**: Monitoring of individual consumer performance
+
+### Resource Management
+
+#### Memory and CPU Optimization
+
+**Resource Allocation**:
+- **Memory Management**: Efficient memory usage for message processing
+- **CPU Optimization**: Optimization of CPU usage for message handling
+- **Resource Limits**: Configurable resource limits for message workers
+- **Resource Monitoring**: Continuous monitoring of resource usage
+
+**Garbage Collection**:
+- **Message Cleanup**: Automatic cleanup of processed messages
+- **Memory Reclamation**: Efficient memory reclamation strategies
+- **Resource Recycling**: Recycling of resources for optimal utilization
+- **Performance Tuning**: Continuous tuning for optimal performance
+
+---
+
+## Monitoring and Observability
+
+### Comprehensive Monitoring
+
+#### Message Flow Monitoring
+
+**Real-Time Dashboards**:
+- **Message Flow Visualization**: Visual representation of message flows
+- **Queue Status**: Real-time status of all message queues
+- **Consumer Health**: Health status of all message consumers
+- **Processing Metrics**: Real-time processing performance metrics
+
+**Alert Systems**:
+- **Queue Depth Alerts**: Alerts for excessive queue depths
+- **Processing Delays**: Alerts for message processing delays
+- **Error Rate Alerts**: Alerts for high error rates
+- **Consumer Failures**: Alerts for consumer failures
+
+#### Performance Analytics
+
+**Statistical Analysis**:
+- **Throughput Analysis**: Analysis of message throughput patterns
+- **Latency Distribution**: Distribution analysis of message latencies
+- **Error Pattern Analysis**: Analysis of error patterns and trends
+- **Capacity Planning**: Data-driven capacity planning
+
+**Business Intelligence**:
+- **Message Volume Trends**: Analysis of message volume over time
+- **Processing Efficiency**: Analysis of processing efficiency metrics
+- **Cost Analysis**: Analysis of message processing costs
+- **Optimization Opportunities**: Identification of optimization opportunities
+
+The Message Worker system provides a robust, scalable, and reliable foundation for all inter-service communication in Textra, ensuring that the accounting automation platform can operate efficiently while maintaining the highest standards of reliability, performance, and observability. 

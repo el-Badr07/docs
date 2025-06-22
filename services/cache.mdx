@@ -1,0 +1,250 @@
+---
+title: "Cache Service"
+description: "Redis-based intelligent caching system for performance optimization across the accounting pipeline"
+---
+
+# Cache Service
+
+The Cache Service is Textra's intelligent caching layer built on Redis, designed to dramatically improve performance across the entire accounting automation pipeline. This service implements sophisticated caching strategies that reduce processing time, minimize external API calls, and provide instant access to frequently requested data.
+
+## Caching Philosophy
+
+### Multi-Layer Caching Strategy
+
+The Cache Service implements a **hierarchical caching approach** that optimizes different types of data based on their usage patterns and computational cost:
+
+**Hot Cache**: Frequently accessed data with millisecond response times
+**Warm Cache**: Recently processed data with sub-second response times  
+**Cold Storage**: Historical data with standard database response times
+
+This approach ensures that the most critical operations (like real-time status updates) are lightning-fast, while less frequent operations (like historical reporting) maintain reasonable performance.
+
+### Intelligent Cache Invalidation
+
+Rather than using simple time-based expiration, the service employs **smart invalidation patterns** that understand the relationships between different types of cached data. When source data changes, all dependent cached items are automatically invalidated, ensuring data consistency without manual cache management.
+
+---
+
+## Core Caching Categories
+
+### 1. Task Status Caching
+
+**Purpose**: Provides instant access to Celery task status and progress information
+
+The system caches task status data to eliminate the need for constant database queries when users are monitoring invoice processing progress. This is particularly important for:
+
+- **Real-time Progress Updates**: Users get immediate feedback on processing status
+- **Dashboard Performance**: Admin interfaces can display system-wide processing status without database load
+- **API Response Speed**: Status endpoints respond in milliseconds rather than seconds
+
+**Cache Behavior**:
+- **TTL**: 1 hour for completed tasks, 5 minutes for active tasks
+- **Update Pattern**: Write-through caching with immediate updates
+- **Invalidation**: Automatic cleanup when tasks complete or fail
+
+### 2. LLM Response Caching
+
+**Purpose**: Eliminates redundant AI API calls for identical processing requests
+
+This is one of the most impactful caching categories, as LLM API calls are both expensive and time-consuming. The service caches:
+
+**OCR Text Processing**: When the same document is processed multiple times
+**Account Mapping Requests**: Common vendor names and product descriptions get cached account suggestions
+**Journal Generation**: Similar invoice patterns result in cached journal templates
+
+**Cache Strategy**:
+- **Content-Based Keys**: Cache keys are generated from content hashes, ensuring identical inputs get identical outputs
+- **Provider-Specific**: Different LLM providers (Groq, Gemini, OpenAI) have separate cache namespaces
+- **Long TTL**: 7 days for successful responses, enabling reuse across different invoices with similar content
+
+### 3. Extracted Invoice Caching
+
+**Purpose**: Stores complete extraction results to avoid reprocessing identical documents
+
+When documents are uploaded multiple times or need reprocessing with different parameters, the cache provides instant access to previously extracted data:
+
+**Duplicate Detection**: Prevents processing the same invoice multiple times
+**Reprocessing Optimization**: Changes to downstream processing (like account mapping) don't require re-extraction
+**Development Efficiency**: Developers can iterate on pipeline improvements without waiting for extraction
+
+### 4. Accounting Proposals Caching
+
+**Purpose**: Accelerates account mapping for similar vendors and products
+
+The system learns from previous account mapping decisions and caches successful proposals:
+
+**Vendor Recognition**: Once a vendor is mapped to specific accounts, future invoices from the same vendor get instant proposals
+**Product Categorization**: Common products and services get cached account mappings
+**Confidence Boosting**: Cached proposals often have higher confidence scores due to validation through usage
+
+### 5. PCG Account Data Caching
+
+**Purpose**: Provides instant access to French Chart of Accounts information
+
+The PCG (Plan Comptable Général) contains over 8,000 account definitions that are frequently accessed during processing:
+
+**Account Validation**: Instant verification that proposed accounts exist and are valid
+**Search Operations**: Fast text search across account titles and descriptions
+**Hierarchy Navigation**: Quick access to account class and category information
+
+---
+
+## Performance Optimization Features
+
+### Adaptive TTL Management
+
+The Cache Service uses **dynamic TTL (Time To Live) strategies** based on data characteristics:
+
+**High-Frequency Data**: Short TTL with aggressive refresh patterns
+**Stable Reference Data**: Long TTL with manual invalidation triggers
+**Processing Results**: Medium TTL with dependency-based invalidation
+
+### Compression and Serialization
+
+To maximize Redis memory efficiency, the service implements:
+
+**JSON Compression**: Large objects are compressed before storage
+**Selective Caching**: Only essential fields are cached for large documents
+**Batch Operations**: Multiple related cache operations are batched for efficiency
+
+### Memory Management
+
+The service includes sophisticated memory management features:
+
+**Memory Monitoring**: Continuous tracking of Redis memory usage
+**Intelligent Eviction**: LRU (Least Recently Used) eviction with custom scoring
+**Preemptive Cleanup**: Automatic removal of expired or low-value cache entries
+
+---
+
+## Cache Hit Rate Optimization
+
+### Statistical Analysis
+
+The Cache Service continuously analyzes cache performance to optimize hit rates:
+
+**Usage Pattern Analysis**: Identifies which data types benefit most from caching
+**Miss Analysis**: Understands why cache misses occur and adjusts strategies
+**Performance Correlation**: Links cache performance to overall system performance
+
+### Predictive Caching
+
+For common workflows, the service implements **predictive caching**:
+
+**Workflow Anticipation**: When Phase 1 completes, Phase 2 data is pre-cached
+**User Behavior Learning**: Frequently accessed invoices are kept in hot cache
+**Batch Processing Optimization**: Related invoices are cached together
+
+---
+
+## Integration with Processing Pipeline
+
+### Phase-Specific Caching
+
+Each phase of the accounting pipeline has tailored caching strategies:
+
+**Phase 1 (Extraction)**: Caches OCR results and LLM extraction responses
+**Phase 2 (Imputation)**: Caches account mapping proposals and PCG lookups
+**Phase 3 (Journal Generation)**: Caches journal templates and validation results
+**Phase 4 (Validation)**: Caches validation rules and compliance checks
+**Phase 5 (Export)**: Caches export templates and format specifications
+
+### Error Recovery Support
+
+The cache plays a crucial role in error recovery:
+
+**Partial Recovery**: When processing fails mid-stream, cached intermediate results enable restart from the failure point
+**Rollback Support**: Previous successful states are cached to enable quick rollback
+**Debug Information**: Error contexts are cached to support troubleshooting
+
+---
+
+## Monitoring and Analytics
+
+### Real-Time Metrics
+
+The Cache Service provides comprehensive monitoring through:
+
+**Hit Rate Tracking**: Per-category and overall cache hit rates
+**Memory Usage Monitoring**: Redis memory consumption and optimization opportunities
+**Performance Impact**: Correlation between cache performance and system response times
+**Cost Analysis**: Tracking of LLM API call savings through caching
+
+### Health Monitoring
+
+Continuous health checks ensure cache reliability:
+
+**Connection Monitoring**: Redis connectivity and response time tracking
+**Data Integrity**: Validation that cached data matches source data
+**Performance Degradation**: Early warning when cache performance declines
+
+### Cache Analytics Dashboard
+
+The service provides detailed analytics for optimization:
+
+**Usage Patterns**: Understanding which data is accessed most frequently
+**Efficiency Metrics**: Measuring the cost-benefit of different caching strategies
+**Capacity Planning**: Predicting future memory requirements based on usage trends
+
+---
+
+## Configuration and Tuning
+
+### Environment-Specific Settings
+
+The Cache Service adapts to different deployment environments:
+
+**Development**: Aggressive caching with short TTLs for rapid iteration
+**Staging**: Production-like caching for realistic performance testing
+**Production**: Optimized caching with long TTLs and high reliability
+
+### Performance Tuning
+
+Key configuration parameters that can be tuned for optimal performance:
+
+**Memory Allocation**: Balancing between cache size and other system needs
+**TTL Strategies**: Optimizing expiration times based on usage patterns
+**Eviction Policies**: Choosing the right eviction strategy for workload characteristics
+**Connection Pooling**: Optimizing Redis connection management
+
+---
+
+## Security and Data Protection
+
+### Data Sensitivity Handling
+
+The cache service implements appropriate security measures:
+
+**Sensitive Data Exclusion**: Financial amounts and personal information have limited cache exposure
+**Encryption**: Sensitive cached data is encrypted at rest
+**Access Control**: Cache access is restricted to authorized service components
+
+### Compliance Considerations
+
+For accounting data, the cache service ensures:
+
+**Audit Trail**: Cache operations are logged for compliance purposes
+**Data Retention**: Cached financial data respects regulatory retention requirements
+**Privacy Protection**: Personal data in cached content follows GDPR guidelines
+
+---
+
+## Disaster Recovery and Backup
+
+### Cache Persistence
+
+While Redis is primarily an in-memory store, the service implements:
+
+**Strategic Persistence**: Critical cache data is persisted to enable quick recovery
+**Backup Integration**: Cache state is included in system backup procedures
+**Warm-up Procedures**: Automated cache warming after system restarts
+
+### Failover Handling
+
+The service gracefully handles cache failures:
+
+**Graceful Degradation**: System continues operating with reduced performance when cache is unavailable
+**Automatic Recovery**: Cache service automatically reconnects and rebuilds when Redis becomes available
+**Performance Monitoring**: System performance is monitored during cache outages to ensure acceptable operation
+
+The Cache Service is essential for making Textra's complex accounting automation pipeline perform at enterprise scale, reducing processing times from minutes to seconds while maintaining data consistency and reliability. 

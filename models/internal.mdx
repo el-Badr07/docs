@@ -1,0 +1,398 @@
+---
+title: "Internal Models"
+description: "System-level data models for configuration management, task tracking, performance monitoring, and internal service communication"
+---
+
+# Internal Models
+
+The Internal Models form the backbone of Textra's system-level operations, providing sophisticated data structures for configuration management, task orchestration, performance monitoring, and inter-service communication. These models ensure reliable system operation, comprehensive observability, and efficient resource management across the entire platform.
+
+## System Architecture Models
+
+### Configuration Management
+
+#### SystemConfiguration Model
+
+Manages global system configuration and settings across all Textra services.
+
+**Core Configuration Properties**:
+- **environment**: Deployment environment (development, staging, production)
+- **version**: Current system version and build information
+- **feature_flags**: Dynamic feature toggles for gradual rollouts
+- **service_endpoints**: URLs and connection details for all services
+- **resource_limits**: System-wide resource allocation limits
+
+**Database Configuration**:
+- **mongodb_settings**: MongoDB connection pools, timeouts, and performance settings
+- **redis_settings**: Redis cache configuration, memory limits, and eviction policies
+- **backup_configuration**: Automated backup schedules and retention policies
+- **index_optimization**: Database indexing strategies and maintenance schedules
+
+**Processing Configuration**:
+- **pipeline_settings**: Configuration for the 5-phase accounting pipeline
+- **llm_provider_config**: Settings for Groq, Gemini, and OpenAI integrations
+- **ocr_configuration**: OCR processing parameters and quality thresholds
+- **export_settings**: Default export formats and generation parameters
+
+#### ServiceConfiguration Model
+
+Manages configuration for individual microservices within the Textra ecosystem.
+
+**Service Identity**:
+- **service_name**: Unique identifier for the service
+- **service_version**: Current version of the service
+- **deployment_timestamp**: When the service was last deployed
+- **health_check_endpoint**: URL for service health monitoring
+
+**Resource Configuration**:
+- **memory_allocation**: Allocated memory for the service
+- **cpu_limits**: CPU usage limits and scaling thresholds
+- **connection_pools**: Database and external service connection pool sizes
+- **timeout_settings**: Request timeout configurations for different operations
+
+**Integration Settings**:
+- **dependent_services**: Services that this service depends on
+- **api_endpoints**: Exposed API endpoints and their configurations
+- **authentication_config**: Authentication and authorization settings
+- **rate_limiting**: Rate limiting rules for API endpoints
+
+---
+
+## Task Management Models
+
+### CeleryTaskModel
+
+Comprehensive model for managing Celery background tasks with detailed tracking and monitoring.
+
+#### Task Identity and Classification
+
+**Task Properties**:
+- **task_id**: Unique Celery task identifier
+- **task_name**: Human-readable task name (e.g., "process_invoice_async")
+- **task_type**: Category of task (invoice_processing, export_generation, system_maintenance)
+- **priority**: Task priority level (low, normal, high, critical)
+
+**Execution Context**:
+- **queue_name**: Celery queue where the task is executed
+- **worker_id**: Identifier of the worker processing the task
+- **retry_count**: Number of retry attempts for failed tasks
+- **max_retries**: Maximum allowed retry attempts
+
+#### Task Lifecycle Management
+
+**Status Tracking**:
+- **status**: Current task status (pending, started, retry, success, failure, revoked)
+- **created_at**: Task creation timestamp
+- **started_at**: When task execution began
+- **completed_at**: Task completion timestamp
+- **estimated_duration**: Estimated time to completion
+
+**Progress Monitoring**:
+- **progress_percentage**: Current progress (0-100%)
+- **current_phase**: Current processing phase for multi-phase tasks
+- **phase_details**: Detailed information about the current phase
+- **progress_messages**: Human-readable progress updates
+
+#### Task Results and Metadata
+
+**Result Management**:
+- **result_data**: Task execution results (success or failure data)
+- **error_details**: Detailed error information for failed tasks
+- **output_files**: Generated files or exports from task execution
+- **performance_metrics**: Execution time, memory usage, and other metrics
+
+**Task Context**:
+- **user_id**: User who initiated the task
+- **invoice_id**: Related invoice ID (for invoice processing tasks)
+- **batch_id**: Batch identifier for batch processing tasks
+- **parent_task_id**: Parent task for sub-tasks or dependent tasks
+
+### TaskQueue Model
+
+Manages task queue statistics and performance monitoring.
+
+#### Queue Statistics
+
+**Queue Metrics**:
+- **queue_name**: Name of the Celery queue
+- **pending_tasks**: Number of tasks waiting to be processed
+- **active_tasks**: Number of currently executing tasks
+- **completed_tasks**: Number of successfully completed tasks
+- **failed_tasks**: Number of failed tasks
+
+**Performance Metrics**:
+- **average_processing_time**: Average time to complete tasks in this queue
+- **throughput**: Tasks processed per minute/hour
+- **success_rate**: Percentage of tasks completed successfully
+- **worker_utilization**: Percentage of workers actively processing tasks
+
+#### Resource Management
+
+**Worker Management**:
+- **active_workers**: Number of workers currently processing tasks
+- **idle_workers**: Number of available workers
+- **worker_capacity**: Maximum number of concurrent tasks per worker
+- **worker_health**: Health status of individual workers
+
+**Queue Health**:
+- **queue_depth**: Current depth of the task queue
+- **oldest_pending_task**: Age of the oldest pending task
+- **processing_bottlenecks**: Identified bottlenecks in task processing
+- **recommended_actions**: System recommendations for queue optimization
+
+---
+
+## Monitoring and Observability Models
+
+### SystemHealthModel
+
+Comprehensive system health monitoring across all Textra components.
+
+#### Service Health Monitoring
+
+**Core Services**:
+- **database_health**: MongoDB connection status, response times, and performance
+- **cache_health**: Redis availability, memory usage, and hit rates
+- **message_queue_health**: RabbitMQ status, queue depths, and message processing rates
+- **api_gateway_health**: API response times, error rates, and throughput
+
+**External Dependencies**:
+- **llm_provider_status**: Availability and performance of Groq, Gemini, OpenAI
+- **ocr_service_health**: LLMWhisperer and PyMuPDF processing status
+- **file_storage_health**: File system or cloud storage availability
+- **email_service_health**: Email notification service status
+
+#### Performance Metrics
+
+**System Performance**:
+- **cpu_utilization**: System-wide CPU usage across all services
+- **memory_usage**: Memory consumption patterns and availability
+- **disk_usage**: Storage utilization and available space
+- **network_performance**: Network latency and bandwidth utilization
+
+**Application Metrics**:
+- **request_throughput**: API requests processed per second
+- **response_times**: Average and percentile response times
+- **error_rates**: Error rates by service and endpoint
+- **concurrent_users**: Number of active users and sessions
+
+#### Alert Management
+
+**Alert Configuration**:
+- **alert_thresholds**: Configurable thresholds for different metrics
+- **alert_rules**: Complex rules for triggering alerts
+- **escalation_policies**: Procedures for escalating critical alerts
+- **notification_channels**: Email, SMS, Slack integration for alerts
+
+**Alert History**:
+- **active_alerts**: Currently active system alerts
+- **alert_history**: Historical record of all system alerts
+- **resolution_times**: Time taken to resolve different types of alerts
+- **false_positive_tracking**: Tracking and tuning of alert accuracy
+
+### PerformanceMetrics Model
+
+Detailed performance tracking for optimization and capacity planning.
+
+#### Processing Pipeline Metrics
+
+**Phase-Specific Performance**:
+- **extraction_metrics**: OCR and LLM extraction performance data
+- **imputation_metrics**: PCG account mapping performance statistics
+- **journal_generation_metrics**: Journal entry creation performance
+- **validation_metrics**: Data validation and compliance checking performance
+- **export_metrics**: Export generation performance across different formats
+
+**Quality Metrics**:
+- **confidence_score_distribution**: Distribution of AI confidence scores
+- **accuracy_metrics**: Accuracy of automated processing compared to manual review
+- **error_pattern_analysis**: Common error patterns and their frequencies
+- **user_satisfaction_scores**: User feedback on processing quality
+
+#### Resource Utilization
+
+**Computational Resources**:
+- **llm_api_usage**: Token consumption and costs across different providers
+- **processing_time_distribution**: Distribution of processing times for different document types
+- **memory_usage_patterns**: Memory consumption patterns during processing
+- **storage_growth_rates**: Rate of data storage growth over time
+
+**Optimization Opportunities**:
+- **bottleneck_identification**: Identified performance bottlenecks
+- **scaling_recommendations**: Recommendations for horizontal or vertical scaling
+- **cost_optimization**: Opportunities for reducing operational costs
+- **efficiency_improvements**: Suggested improvements for processing efficiency
+
+---
+
+## Communication and Integration Models
+
+### ServiceCommunication Model
+
+Manages inter-service communication and API integration patterns.
+
+#### API Integration
+
+**Internal APIs**:
+- **service_registry**: Registry of all internal service endpoints
+- **api_versioning**: Version management for internal APIs
+- **authentication_tokens**: Service-to-service authentication tokens
+- **rate_limiting_rules**: Rate limiting between internal services
+
+**External Integrations**:
+- **webhook_configurations**: Outbound webhook configurations
+- **third_party_apis**: Integration settings for external services
+- **api_key_management**: Secure management of external API keys
+- **integration_health**: Health monitoring of external integrations
+
+#### Message Passing
+
+**Event System**:
+- **event_types**: Defined event types for system communication
+- **event_publishers**: Services that publish events
+- **event_subscribers**: Services that consume events
+- **event_routing**: Rules for routing events to appropriate consumers
+
+**Message Queues**:
+- **queue_configurations**: RabbitMQ queue configurations
+- **message_routing**: Message routing rules and patterns
+- **dead_letter_handling**: Handling of failed message processing
+- **message_persistence**: Message durability and persistence settings
+
+### ErrorTracking Model
+
+Comprehensive error tracking and analysis across the entire system.
+
+#### Error Classification
+
+**Error Categories**:
+- **system_errors**: Infrastructure and system-level errors
+- **application_errors**: Business logic and application errors
+- **integration_errors**: Errors in external service integrations
+- **user_errors**: Errors caused by user input or actions
+
+**Error Severity**:
+- **critical**: System-threatening errors requiring immediate attention
+- **high**: Significant errors affecting user experience
+- **medium**: Moderate errors with workarounds available
+- **low**: Minor errors with minimal impact
+
+#### Error Analysis
+
+**Error Patterns**:
+- **frequency_analysis**: How often different errors occur
+- **correlation_analysis**: Relationships between different error types
+- **temporal_patterns**: When errors are most likely to occur
+- **user_impact_analysis**: How errors affect different user segments
+
+**Resolution Tracking**:
+- **resolution_times**: Time taken to resolve different error types
+- **resolution_methods**: Common methods for resolving errors
+- **prevention_measures**: Measures implemented to prevent error recurrence
+- **learning_integration**: How error analysis improves system reliability
+
+---
+
+## Security and Compliance Models
+
+### SecurityConfiguration Model
+
+Manages security settings and compliance requirements across the system.
+
+#### Access Control
+
+**Authentication Settings**:
+- **authentication_methods**: Supported authentication mechanisms
+- **session_management**: Session timeout and security settings
+- **multi_factor_authentication**: MFA configuration and requirements
+- **password_policies**: Password complexity and rotation requirements
+
+**Authorization Rules**:
+- **role_definitions**: System roles and their permissions
+- **resource_permissions**: Permissions for different system resources
+- **access_control_lists**: Detailed access control configurations
+- **privilege_escalation**: Rules for temporary privilege elevation
+
+#### Data Protection
+
+**Encryption Settings**:
+- **encryption_algorithms**: Encryption methods for data at rest and in transit
+- **key_management**: Cryptographic key generation and rotation
+- **certificate_management**: SSL/TLS certificate management
+- **data_classification**: Classification of sensitive data types
+
+**Privacy Controls**:
+- **data_retention_policies**: Automated data retention and deletion
+- **anonymization_rules**: Rules for data anonymization
+- **consent_management**: User consent tracking and management
+- **audit_logging**: Comprehensive audit trail for security events
+
+### ComplianceTracking Model
+
+Tracks compliance with various regulatory requirements and standards.
+
+#### Regulatory Compliance
+
+**French Regulations**:
+- **pcg_compliance**: Compliance with French Chart of Accounts
+- **vat_regulations**: VAT calculation and reporting compliance
+- **data_protection**: GDPR and French data protection compliance
+- **accounting_standards**: Compliance with French accounting standards
+
+**International Standards**:
+- **iso_compliance**: ISO 27001 and other relevant ISO standards
+- **sox_compliance**: Sarbanes-Oxley compliance for applicable organizations
+- **industry_standards**: Industry-specific compliance requirements
+- **certification_tracking**: Tracking of compliance certifications
+
+#### Audit Support
+
+**Audit Trail**:
+- **user_activity_logs**: Comprehensive logging of user activities
+- **system_change_logs**: Tracking of all system configuration changes
+- **data_access_logs**: Logging of all data access and modifications
+- **compliance_reports**: Automated generation of compliance reports
+
+**Evidence Management**:
+- **document_retention**: Retention of compliance-related documents
+- **evidence_collection**: Automated collection of compliance evidence
+- **audit_preparation**: Tools and data for audit preparation
+- **remediation_tracking**: Tracking of compliance remediation efforts
+
+---
+
+## Performance Optimization Models
+
+### CacheManagement Model
+
+Sophisticated cache management and optimization across the system.
+
+#### Cache Strategy
+
+**Cache Layers**:
+- **application_cache**: In-memory application-level caching
+- **distributed_cache**: Redis-based distributed caching
+- **database_cache**: Database query result caching
+- **cdn_cache**: Content delivery network caching for static assets
+
+**Cache Policies**:
+- **eviction_policies**: LRU, LFU, and custom eviction strategies
+- **ttl_management**: Time-to-live settings for different data types
+- **cache_warming**: Strategies for pre-loading frequently accessed data
+- **cache_invalidation**: Rules for cache invalidation and consistency
+
+#### Performance Monitoring
+
+**Cache Metrics**:
+- **hit_rates**: Cache hit rates by category and time period
+- **miss_patterns**: Analysis of cache miss patterns
+- **memory_utilization**: Cache memory usage and optimization
+- **performance_impact**: Impact of caching on overall system performance
+
+**Optimization Strategies**:
+- **cache_sizing**: Optimal cache sizes for different data types
+- **access_patterns**: Analysis of data access patterns for cache optimization
+- **cost_benefit_analysis**: Cost-benefit analysis of different caching strategies
+- **predictive_caching**: Machine learning-based predictive cache loading
+
+The Internal Models provide the foundation for reliable, observable, and efficient operation of the Textra platform, ensuring that all system components work together seamlessly while maintaining the performance, security, and compliance standards required for enterprise financial applications. 

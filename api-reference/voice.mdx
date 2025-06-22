@@ -1,0 +1,629 @@
+---
+title: "Voice API Reference"
+description: "Complete API reference for Textra's voice interaction capabilities using LiveKit for real-time conversations with AI agents"
+---
+
+# Voice API Reference
+
+The Voice API enables real-time voice conversations with Textra's AI agents through LiveKit integration, providing natural language interaction for accounting workflows. Users can speak directly to the system to query invoices, get financial analysis, and manage accounting data through voice commands while receiving spoken responses.
+
+## System Architecture
+
+### LiveKit Integration
+
+The Voice API is built on **LiveKit**, a powerful real-time communication platform that provides:
+
+- **Real-Time Audio Processing**: Low-latency voice communication
+- **WebRTC Support**: Browser-based voice interaction without plugins
+- **Scalable Infrastructure**: Support for multiple concurrent voice sessions
+- **Cross-Platform Compatibility**: Works across desktop, mobile, and web platforms
+
+### Voice Processing Pipeline
+
+The voice interaction follows a sophisticated processing pipeline:
+
+1. **Speech-to-Text**: Convert user speech to text using advanced STT models
+2. **Intent Recognition**: Understand user intent and extract parameters
+3. **Agent Routing**: Route queries to appropriate AI agents
+4. **Response Generation**: Generate intelligent responses using LLMs
+5. **Text-to-Speech**: Convert responses back to natural speech
+6. **Audio Streaming**: Stream audio responses in real-time
+
+---
+
+## Connection Management
+
+### Create Voice Session
+
+Establish a new voice session with LiveKit room connection.
+
+```http
+POST /api/voice/sessions
+```
+
+**Request Body:**
+```json
+{
+  "user_id": "user-123",
+  "session_type": "accounting_assistant",
+  "preferred_language": "french",
+  "voice_settings": {
+    "speech_rate": "normal",
+    "voice_gender": "female",
+    "audio_quality": "high"
+  },
+  "agent_preferences": {
+    "enabled_agents": ["invoice_qa", "calculation", "retrieval"],
+    "default_agent": "invoice_qa",
+    "context_retention": true
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "session_id": "voice-session-uuid",
+  "room_name": "voice-room-uuid",
+  "connection_details": {
+    "livekit_url": "wss://livekit.textra.com",
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "participant_name": "user-123",
+    "room_config": {
+      "auto_subscribe": true,
+      "publish_audio": true,
+      "publish_video": false
+    }
+  },
+  "session_config": {
+    "max_duration": 3600,
+    "idle_timeout": 300,
+    "language": "french",
+    "available_agents": ["invoice_qa", "calculation", "retrieval"]
+  },
+  "created_at": "2023-12-01T10:30:00Z"
+}
+```
+
+### Get Session Details
+
+Retrieve information about an active voice session.
+
+```http
+GET /api/voice/sessions/{session_id}
+```
+
+**Response:**
+```json
+{
+  "session_id": "voice-session-uuid",
+  "status": "active",
+  "participant_count": 2,
+  "duration": 450,
+  "conversation_stats": {
+    "messages_exchanged": 15,
+    "agents_used": ["invoice_qa", "calculation"],
+    "documents_referenced": 5,
+    "queries_processed": 12
+  },
+  "audio_stats": {
+    "audio_quality": "excellent",
+    "latency_ms": 85,
+    "packet_loss": 0.1
+  },
+  "session_context": {
+    "current_conversation_id": "conv-uuid-123",
+    "active_documents": ["INV-123", "INV-124"],
+    "last_activity": "2023-12-01T10:45:00Z"
+  }
+}
+```
+
+### End Voice Session
+
+Terminate a voice session and cleanup resources.
+
+```http
+DELETE /api/voice/sessions/{session_id}
+```
+
+**Response:**
+```json
+{
+  "session_id": "voice-session-uuid",
+  "ended_at": "2023-12-01T11:00:00Z",
+  "session_summary": {
+    "total_duration": 1800,
+    "messages_processed": 25,
+    "successful_queries": 23,
+    "failed_queries": 2,
+    "documents_accessed": 8
+  },
+  "conversation_saved": true,
+  "conversation_id": "conv-uuid-123"
+}
+```
+
+---
+
+## Voice Commands and Interactions
+
+### Speech Recognition Configuration
+
+Configure speech-to-text settings for optimal recognition.
+
+```http
+POST /api/voice/sessions/{session_id}/speech-config
+```
+
+**Request Body:**
+```json
+{
+  "language": "fr-FR",
+  "recognition_model": "enhanced",
+  "noise_suppression": true,
+  "auto_punctuation": true,
+  "profanity_filter": false,
+  "accounting_vocabulary": true,
+  "custom_vocabulary": [
+    "plan comptable général",
+    "hors taxes",
+    "toutes taxes comprises",
+    "numéro de facture"
+  ]
+}
+```
+
+### Voice Command Processing
+
+Process voice commands and route to appropriate agents.
+
+```http
+POST /api/voice/sessions/{session_id}/process-command
+```
+
+**Request Body:**
+```json
+{
+  "transcript": "Montre-moi toutes les factures de Fournisseur ABC du mois dernier",
+  "confidence": 0.95,
+  "audio_metadata": {
+    "duration": 3.2,
+    "sample_rate": 16000,
+    "language_detected": "fr-FR"
+  },
+  "context": {
+    "previous_queries": ["invoice_search"],
+    "session_state": "active_conversation"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "command_id": "cmd-uuid-123",
+  "intent_recognized": "invoice_search",
+  "parameters_extracted": {
+    "vendor_name": "Fournisseur ABC",
+    "date_filter": "last_month",
+    "document_type": "invoices"
+  },
+  "agent_assigned": "retrieval",
+  "processing_status": "completed",
+  "results": {
+    "invoices_found": 8,
+    "total_amount": 15750.00,
+    "date_range": {
+      "start": "2023-11-01",
+      "end": "2023-11-30"
+    }
+  },
+  "voice_response": {
+    "text": "J'ai trouvé 8 factures de Fournisseur ABC du mois dernier pour un montant total de 15 750 euros. Voulez-vous que je vous donne plus de détails sur une facture en particulier?",
+    "audio_url": "/api/voice/audio/response-uuid-123.mp3",
+    "duration": 8.5
+  }
+}
+```
+
+---
+
+## Text-to-Speech Configuration
+
+### Voice Settings
+
+Configure text-to-speech parameters for natural-sounding responses.
+
+```http
+POST /api/voice/sessions/{session_id}/tts-config
+```
+
+**Request Body:**
+```json
+{
+  "voice_provider": "azure",
+  "voice_name": "fr-FR-DeniseNeural",
+  "speech_rate": 1.0,
+  "pitch": 0.0,
+  "volume": 0.8,
+  "pronunciation_adjustments": {
+    "accounting_terms": true,
+    "currency_formatting": "french",
+    "number_formatting": "european"
+  },
+  "emotional_tone": "professional",
+  "pause_settings": {
+    "sentence_pause": 500,
+    "paragraph_pause": 1000,
+    "list_item_pause": 300
+  }
+}
+```
+
+### Generate Speech Response
+
+Convert text responses to speech for voice delivery.
+
+```http
+POST /api/voice/tts/generate
+```
+
+**Request Body:**
+```json
+{
+  "text": "La facture numéro FAC-2023-001 d'un montant de 1 200 euros TTC a été traitée avec succès. Le compte fournisseur proposé est 401001.",
+  "voice_settings": {
+    "voice_name": "fr-FR-DeniseNeural",
+    "speech_rate": 1.0,
+    "format": "mp3",
+    "quality": "high"
+  },
+  "context": {
+    "response_type": "invoice_processing_result",
+    "urgency": "normal",
+    "session_id": "voice-session-uuid"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "audio_id": "audio-uuid-123",
+  "audio_url": "/api/voice/audio/audio-uuid-123.mp3",
+  "duration": 12.3,
+  "file_size": 196608,
+  "format": "mp3",
+  "sample_rate": 22050,
+  "generated_at": "2023-12-01T10:35:00Z",
+  "text_analyzed": {
+    "word_count": 24,
+    "estimated_speaking_time": 12.3,
+    "complexity_score": 0.7
+  }
+}
+```
+
+---
+
+## Agent-Specific Voice Interactions
+
+### Invoice QA Agent Voice Interface
+
+Voice interactions specifically designed for invoice question-answering.
+
+**Common Voice Commands:**
+- "Quel est le montant total de la facture INV-123?"
+- "Quels sont les articles sur cette facture?"
+- "La TVA est-elle calculée correctement?"
+- "Qui est le fournisseur de cette facture?"
+
+**Response Format:**
+```json
+{
+  "agent_type": "invoice_qa",
+  "query_type": "invoice_details",
+  "voice_response": {
+    "summary": "La facture INV-123 d'un montant de 1 200 euros comprend 3 articles principaux.",
+    "detailed_response": "Voici les détails de la facture INV-123: Le montant total est de 1 200 euros TTC, soit 1 000 euros HT plus 200 euros de TVA à 20%. Cette facture comprend trois articles: 10 unités de matières premières à 80 euros l'unité, 5 unités d'emballage à 40 euros l'unité.",
+    "follow_up_suggestions": [
+      "Voulez-vous voir les détails de chaque ligne?",
+      "Souhaitez-vous vérifier les comptes proposés?"
+    ]
+  }
+}
+```
+
+### Calculation Agent Voice Interface
+
+Voice interactions for financial calculations and analysis.
+
+**Common Voice Commands:**
+- "Calcule le total des factures de ce mois"
+- "Quelle est la TVA totale sur ces factures?"
+- "Compare les montants entre ces deux fournisseurs"
+- "Calcule la moyenne des factures de ce trimestre"
+
+### Retrieval Agent Voice Interface
+
+Voice commands for searching and retrieving documents.
+
+**Common Voice Commands:**
+- "Trouve toutes les factures impayées"
+- "Montre-moi les factures de plus de 5000 euros"
+- "Cherche les factures de Fournisseur XYZ"
+- "Affiche les factures du mois dernier"
+
+---
+
+## Real-Time Audio Streaming
+
+### Audio Stream Management
+
+Manage real-time audio streaming for voice interactions.
+
+```http
+POST /api/voice/sessions/{session_id}/stream/start
+```
+
+**Request Body:**
+```json
+{
+  "stream_config": {
+    "audio_codec": "opus",
+    "sample_rate": 48000,
+    "channels": 1,
+    "bitrate": 64000
+  },
+  "processing_config": {
+    "voice_activity_detection": true,
+    "noise_suppression": true,
+    "echo_cancellation": true,
+    "auto_gain_control": true
+  }
+}
+```
+
+### Audio Quality Monitoring
+
+Monitor audio quality and connection status during voice sessions.
+
+```http
+GET /api/voice/sessions/{session_id}/audio-quality
+```
+
+**Response:**
+```json
+{
+  "session_id": "voice-session-uuid",
+  "audio_quality": {
+    "overall_score": 4.2,
+    "latency_ms": 85,
+    "jitter_ms": 12,
+    "packet_loss_percentage": 0.1,
+    "bandwidth_usage": 64000
+  },
+  "connection_stats": {
+    "connection_type": "webrtc",
+    "ice_connection_state": "connected",
+    "dtls_state": "connected",
+    "signaling_state": "stable"
+  },
+  "recommendations": [
+    "Audio quality is excellent",
+    "No optimization needed"
+  ]
+}
+```
+
+---
+
+## Voice Session Analytics
+
+### Session Performance Metrics
+
+Get detailed analytics about voice session performance.
+
+```http
+GET /api/voice/sessions/{session_id}/analytics
+```
+
+**Response:**
+```json
+{
+  "session_id": "voice-session-uuid",
+  "performance_metrics": {
+    "speech_recognition": {
+      "accuracy": 0.95,
+      "average_confidence": 0.92,
+      "processing_latency": 450,
+      "total_utterances": 45
+    },
+    "agent_performance": {
+      "response_time": 2.3,
+      "success_rate": 0.96,
+      "user_satisfaction": 0.89,
+      "queries_resolved": 42
+    },
+    "audio_quality": {
+      "average_latency": 85,
+      "connection_stability": 0.98,
+      "audio_clarity": 4.1
+    }
+  },
+  "usage_statistics": {
+    "total_duration": 1800,
+    "active_speaking_time": 450,
+    "agent_response_time": 380,
+    "silence_time": 970
+  },
+  "conversation_analysis": {
+    "topics_discussed": ["invoice_search", "payment_status", "vat_calculation"],
+    "documents_referenced": 12,
+    "successful_operations": 15,
+    "user_intent_accuracy": 0.94
+  }
+}
+```
+
+### Voice Command Analytics
+
+Analyze voice command patterns and effectiveness.
+
+```http
+GET /api/voice/analytics/commands
+```
+
+**Query Parameters:**
+- `date_from`: Start date for analytics
+- `date_to`: End date for analytics
+- `user_id`: Specific user analytics
+- `session_type`: Filter by session type
+
+**Response:**
+```json
+{
+  "command_analytics": {
+    "total_commands": 1250,
+    "successful_commands": 1198,
+    "success_rate": 0.958,
+    "average_processing_time": 2.1
+  },
+  "popular_commands": [
+    {
+      "command_pattern": "find invoices from {vendor}",
+      "frequency": 245,
+      "success_rate": 0.97,
+      "average_response_time": 1.8
+    },
+    {
+      "command_pattern": "calculate total amount",
+      "frequency": 189,
+      "success_rate": 0.99,
+      "average_response_time": 1.2
+    }
+  ],
+  "language_distribution": {
+    "french": 0.75,
+    "english": 0.20,
+    "arabic": 0.05
+  },
+  "agent_usage": {
+    "retrieval": 0.45,
+    "invoice_qa": 0.35,
+    "calculation": 0.15,
+    "mongodb": 0.05
+  }
+}
+```
+
+---
+
+## Error Handling and Troubleshooting
+
+### Voice Session Errors
+
+Common error scenarios and their handling:
+
+```json
+{
+  "error_types": {
+    "audio_connection_failed": {
+      "code": "VOICE_001",
+      "message": "Failed to establish audio connection",
+      "troubleshooting": [
+        "Check microphone permissions",
+        "Verify network connectivity",
+        "Try refreshing the session"
+      ]
+    },
+    "speech_recognition_failed": {
+      "code": "VOICE_002", 
+      "message": "Unable to recognize speech",
+      "troubleshooting": [
+        "Speak more clearly",
+        "Reduce background noise",
+        "Check microphone quality"
+      ]
+    },
+    "agent_unavailable": {
+      "code": "VOICE_003",
+      "message": "Requested agent is not available",
+      "troubleshooting": [
+        "Try a different agent",
+        "Wait for agent to become available",
+        "Use text-based interaction"
+      ]
+    }
+  }
+}
+```
+
+### Audio Quality Issues
+
+Diagnose and resolve audio quality problems:
+
+```http
+POST /api/voice/sessions/{session_id}/diagnose
+```
+
+**Response:**
+```json
+{
+  "diagnosis": {
+    "audio_input": "good",
+    "audio_output": "excellent", 
+    "network_latency": "acceptable",
+    "processing_speed": "optimal"
+  },
+  "issues_detected": [
+    {
+      "issue": "slight_background_noise",
+      "severity": "low",
+      "recommendation": "Enable noise suppression"
+    }
+  ],
+  "optimization_suggestions": [
+    "Use headphones for better audio quality",
+    "Ensure stable internet connection",
+    "Close other applications using microphone"
+  ]
+}
+```
+
+---
+
+## Integration and Webhooks
+
+### Voice Event Webhooks
+
+Configure webhooks for voice session events:
+
+```http
+POST /api/voice/webhooks
+```
+
+**Request Body:**
+```json
+{
+  "url": "https://your-system.com/webhook/voice",
+  "events": [
+    "session.started",
+    "session.ended", 
+    "command.processed",
+    "audio.quality_issue"
+  ],
+  "secret": "webhook-secret-key"
+}
+```
+
+**Available Events:**
+- `session.started`: Voice session initiated
+- `session.ended`: Voice session terminated
+- `command.processed`: Voice command completed
+- `audio.quality_issue`: Audio quality problem detected
+- `agent.response_generated`: AI agent response ready
+- `speech.recognition_completed`: Speech-to-text completed
+
+The Voice API enables natural, conversational interaction with Textra's accounting system, making complex financial operations accessible through simple voice commands while maintaining the accuracy and compliance standards required for professional accounting workflows. 

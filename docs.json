@@ -1,102 +1,88 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "Textra",
   "theme": "mint",
-  "name": "Mint Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
   },
   "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#2879E2",
+    "light": "#3D87E5",
+    "dark": "#1F62BA"
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:hi@mintlify.com"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Dashboard",
+    "url": "https://dashboard.mintlify.com"
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Get Started",
+            "group": "Getting Started",
             "pages": [
-              "index",
               "quickstart",
               "development"
             ]
           },
           {
-            "group": "Essentials",
+            "group": "API Reference",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/settings",
-              "essentials/navigation",
-              "essentials/reusable-snippets"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "API Reference",
-        "groups": [
-          {
-            "group": "API Documentation",
-            "pages": [
-              "api-reference/introduction"
+              "api-reference/introduction",
+              "api-reference/accounting",
+              "api-reference/conversations",
+              "api-reference/financial-documents",
+              "api-reference/voice"
             ]
           },
           {
-            "group": "Endpoint Examples",
+            "group": "Core Services",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "services/cache",
+              "services/database",
+              "services/conversation",
+              "services/file",
+              "services/accounting-pipeline"
+            ]
+          },
+          {
+            "group": "Data Models",
+            "pages": [
+              "models/accounting",
+              "models/conversation",
+              "models/internal"
+            ]
+          },
+          {
+            "group": "Async Processing",
+            "pages": [
+              "async/tasks",
+              "async/message-worker"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "utils/llm-helpers",
+              "utils/pcg-loader"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+  "footerSocials": {
+    "x": "https://x.com/mintlify",
+    "github": "https://github.com/mintlify",
+    "website": "https://mintlify.com"
   }
 }

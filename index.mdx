@@ -1,71 +1,249 @@
 ---
-title: Introduction
-description: "Welcome to the home of your new documentation"
+title: "Textra Documentation"
+description: "Comprehensive technical documentation for Textra's intelligent accounting automation platform"
 ---
 
-<img
-  className="block dark:hidden"
-  src="/images/hero-light.png"
-  alt="Hero Light"
-/>
-<img
-  className="hidden dark:block"
-  src="/images/hero-dark.png"
-  alt="Hero Dark"
-/>
+# Textra Platform Documentation
 
-## Setting up
+Welcome to the comprehensive technical documentation for Textra, an enterprise-grade intelligent accounting automation platform that transforms manual invoice processing into streamlined, AI-powered workflows with French PCG compliance.
 
-The first step to world-class documentation is setting up your editing environments.
+## Platform Overview
+
+Textra is a sophisticated **multi-service architecture** that combines cutting-edge AI technology with robust accounting principles to deliver:
+
+- **Intelligent Document Processing**: Advanced OCR and LLM-powered extraction from invoices, receipts, and financial documents
+- **French PCG Compliance**: Complete integration with Plan Comptable Général for regulatory compliance
+- **Multi-Conversation AI Interface**: Sophisticated chat system with specialized AI agents for different accounting tasks
+- **Real-Time Processing Pipeline**: 5-phase automated pipeline from document upload to balanced journal entries
+- **Enterprise Scalability**: MongoDB, Redis, and RabbitMQ architecture designed for high-volume processing
+
+---
+
+## Architecture Deep Dive
+
+### Core Services Documentation
 
 <CardGroup cols={2}>
-  <Card
-    title="Edit Your Docs"
-    icon="pen-to-square"
-    href="https://mintlify.com/docs/quickstart"
-  >
-    Get your docs set up locally for easy development
+  <Card title="Database Service" icon="database" href="/services/database">
+    **MongoDB-based persistence layer** managing the complete invoice processing lifecycle through 6 specialized collections with comprehensive indexing and performance optimization strategies.
   </Card>
-  <Card
-    title="Preview Changes"
-    icon="image"
-    href="https://mintlify.com/docs/development"
-  >
-    Preview your changes before you push to make sure they're perfect
+  <Card title="Cache Service" icon="bolt" href="/services/cache">
+    **Redis-powered intelligent caching** with multi-layer strategies, adaptive TTL management, and sophisticated invalidation patterns optimized for accounting workflows.
+  </Card>
+  <Card title="Conversation Service" icon="comments" href="/services/conversation">
+    **Multi-conversation AI chat system** enabling parallel conversations with specialized agents, context preservation, and seamless integration with accounting operations.
+  </Card>
+  <Card title="File Service" icon="folder" href="/services/file">
+    **Secure file management** with multi-format support, automatic organization, and integration with the processing pipeline for documents and exports.
   </Card>
 </CardGroup>
 
-## Make it yours
-
-Update your docs to your brand and add valuable content for the best user conversion.
+### API Reference
 
 <CardGroup cols={2}>
-  <Card
-    title="Customize Style"
-    icon="palette"
-    href="https://mintlify.com/docs/settings/global"
-  >
-    Customize your docs to your company's colors and brands
+  <Card title="Accounting API" icon="calculator" href="/api-reference/accounting">
+    **Comprehensive accounting automation API** with 50+ endpoints covering invoice processing, PCG integration, payment management, and financial reporting.
   </Card>
-  <Card
-    title="Reference APIs"
-    icon="code"
-    href="https://mintlify.com/docs/api-playground/openapi"
-  >
-    Automatically generate endpoints from an OpenAPI spec
+  <Card title="Conversations API" icon="message-circle" href="/api-reference/conversations">
+    **Multi-conversation management API** for creating, managing, and integrating AI-powered conversations with accounting workflows.
   </Card>
-  <Card
-    title="Add Components"
-    icon="screwdriver-wrench"
-    href="https://mintlify.com/docs/content/components/accordions"
-  >
-    Build interactive features and designs to guide your users
+  <Card title="Financial Documents API" icon="file-text" href="/api-reference/financial-documents">
+    **Document processing API** supporting multiple financial document types beyond invoices, including bank statements and receipts.
   </Card>
-  <Card
-    title="Get Inspiration"
-    icon="stars"
-    href="https://mintlify.com/customers"
-  >
-    Check out our showcase of our favorite documentation
+  <Card title="Voice API" icon="mic" href="/api-reference/voice">
+    **Voice interaction capabilities** using LiveKit for real-time voice conversations with AI agents about accounting data.
   </Card>
 </CardGroup>
+
+---
+
+## Data Models & Architecture
+
+### Comprehensive Data Models
+
+<CardGroup cols={2}>
+  <Card title="Accounting Models" icon="chart-line" href="/models/accounting">
+    **Sophisticated Pydantic models** with 15+ data structures covering the complete accounting pipeline from extraction to journal entries, with built-in validation and French PCG compliance.
+  </Card>
+  <Card title="Conversation Models" icon="users" href="/models/conversation">
+    **Chat system data structures** managing conversation threads, message metadata, user contexts, and AI agent interactions with MongoDB integration.
+  </Card>
+  <Card title="Internal Models" icon="cog" href="/models/internal">
+    **System-level models** for configuration management, task tracking, performance monitoring, and internal service communication.
+  </Card>
+</CardGroup>
+
+### Utility Systems
+
+<CardGroup cols={2}>
+  <Card title="LLM Helpers" icon="brain" href="/utils/llm-helpers">
+    **Multi-provider AI integration** supporting Groq, Gemini, and OpenAI with intelligent provider selection, schema-driven prompts, and sophisticated response validation.
+  </Card>
+  <Card title="PCG Loader" icon="book" href="/utils/pcg-loader">
+    **French Chart of Accounts integration** with 8000+ account mappings, intelligent caching, validation rules, and compliance checking for automated account mapping.
+  </Card>
+</CardGroup>
+
+---
+
+## Processing Pipeline Architecture
+
+### 5-Phase Intelligent Processing
+
+The Textra accounting pipeline represents a sophisticated **5-phase processing architecture** that transforms raw invoice documents into compliance-ready accounting entries:
+
+#### Phase 1: Intelligent Document Extraction
+- **Advanced OCR Processing**: LLMWhisperer integration with PyMuPDF for superior text extraction
+- **Multi-Provider LLM Integration**: Automatic provider selection based on document complexity
+- **Confidence Scoring**: Sophisticated algorithms assessing extraction quality and completeness
+- **Language Detection**: Automatic detection and appropriate processing for French, English, and Arabic documents
+
+#### Phase 2: PCG Account Mapping
+- **Intelligent Vendor Recognition**: AI-powered mapping of vendors to appropriate supplier accounts (401xxx series)
+- **Product Categorization**: Sophisticated classification of products/services to expense accounts (6xx series)
+- **VAT Account Handling**: Automatic mapping to appropriate VAT accounts based on rates and transaction types
+- **Confidence-Based Validation**: Multi-level confidence scoring with human review triggers
+
+#### Phase 3: Journal Entry Generation
+- **Double-Entry Validation**: Automatic enforcement of fundamental accounting principles
+- **French Accounting Compliance**: Proper journal classification (JA, JV, BQ, OD) according to French standards
+- **Balance Verification**: Mathematical validation ensuring debits equal credits
+- **Multi-Language Descriptions**: Journal descriptions in French, English, and Arabic
+
+#### Phase 4: Enhanced Validation & Enrichment
+- **Due Date Calculations**: Automatic calculation based on payment terms and business rules
+- **VAT Reconciliation**: Sophisticated VAT validation and correction algorithms
+- **Cross-Reference Validation**: Ensuring consistency across all processing phases
+- **Compliance Checking**: Validation against French accounting regulations and PCG standards
+
+#### Phase 5: Multi-Format Export & Integration
+- **Export Format Support**: CSV, XML, JSON, Sage, and FEC format generation
+- **Integration APIs**: RESTful APIs for ERP and accounting software integration
+- **Audit Trail Generation**: Complete processing history for compliance and debugging
+- **Performance Metrics**: Detailed analytics on processing efficiency and accuracy
+
+---
+
+## Async Processing & Task Management
+
+### Celery-Based Background Processing
+
+The platform implements **sophisticated asynchronous processing** using Celery with RabbitMQ for reliable, scalable task execution:
+
+**Task Types**:
+- **Single Invoice Processing**: Individual document processing with real-time status updates
+- **Batch Processing**: Parallel processing of multiple invoices with configurable worker limits
+- **Export Generation**: Background generation of accounting exports in multiple formats
+- **System Maintenance**: Automated cleanup, optimization, and health monitoring tasks
+
+**Performance Features**:
+- **Parallel Execution**: Configurable worker pools for optimal resource utilization
+- **Progress Tracking**: Real-time progress updates with detailed phase information
+- **Error Recovery**: Automatic retry logic with exponential backoff and provider failover
+- **Resource Management**: Intelligent memory and CPU usage optimization
+
+---
+
+## AI Agent Ecosystem
+
+### Specialized AI Agents
+
+Textra employs a **team-based AI architecture** with specialized agents for different accounting tasks:
+
+#### Invoice Retrieval Agent
+**Specialization**: Database search and document discovery
+**Capabilities**: Natural language queries, complex filtering, intelligent result ranking
+**Integration**: Direct MongoDB integration with optimized aggregation pipelines
+
+#### Invoice QA Agent
+**Specialization**: Document content analysis and question answering
+**Capabilities**: RAG-based responses, detailed invoice analysis, cross-document comparisons
+**Integration**: Vector search integration with comprehensive document indexing
+
+#### Calculation Agent
+**Specialization**: Financial calculations and analysis
+**Capabilities**: VAT calculations, total verification, currency conversions, financial ratios
+**Integration**: Direct integration with accounting models and validation systems
+
+#### MongoDB Agent
+**Specialization**: Database operations and analytics
+**Capabilities**: Complex aggregation queries, statistical analysis, data mining operations
+**Integration**: Full database access with query optimization and result caching
+
+---
+
+## Enterprise Features
+
+### Security & Compliance
+
+**Data Protection**:
+- **Encryption**: End-to-end encryption for sensitive financial data
+- **Access Control**: Role-based permissions with audit logging
+- **GDPR Compliance**: Privacy-by-design with data minimization and deletion capabilities
+- **Financial Regulations**: Compliance with French accounting standards and audit requirements
+
+**System Reliability**:
+- **High Availability**: Redundant services with automatic failover
+- **Backup & Recovery**: Comprehensive backup strategies with point-in-time recovery
+- **Monitoring**: Real-time system health monitoring with alerting
+- **Performance Optimization**: Continuous optimization based on usage patterns
+
+### Scalability & Performance
+
+**Horizontal Scaling**:
+- **Microservices Architecture**: Independent scaling of different system components
+- **Load Balancing**: Intelligent request distribution across service instances
+- **Caching Strategies**: Multi-layer caching with Redis for optimal performance
+- **Database Optimization**: Sophisticated indexing and query optimization
+
+**Performance Monitoring**:
+- **Real-Time Metrics**: Comprehensive monitoring of all system components
+- **Performance Analytics**: Detailed analysis of processing efficiency and bottlenecks
+- **Capacity Planning**: Predictive analysis for resource requirements
+- **Cost Optimization**: Continuous optimization of cloud resource usage
+
+---
+
+## Getting Started
+
+### Development Setup
+
+For developers looking to understand or contribute to the Textra platform:
+
+1. **Architecture Review**: Start with the [Database Service](/services/database) documentation to understand the data flow
+2. **API Exploration**: Review the [Accounting API](/api-reference/accounting) for endpoint capabilities
+3. **Model Understanding**: Study the [Accounting Models](/models/accounting) for data structure comprehension
+4. **AI Integration**: Explore the [LLM Helpers](/utils/llm-helpers) for AI integration patterns
+
+### Integration Guide
+
+For businesses integrating with Textra:
+
+1. **API Authentication**: Set up secure API access with proper credentials
+2. **Webhook Configuration**: Configure webhooks for real-time processing updates
+3. **Data Mapping**: Map your existing data structures to Textra's models
+4. **Testing Environment**: Use the sandbox environment for integration testing
+
+---
+
+## Support & Community
+
+### Documentation Maintenance
+
+This documentation is continuously updated to reflect the latest platform capabilities and best practices. Each section provides:
+
+- **Comprehensive Coverage**: Detailed explanation of functionality and architecture
+- **Real-World Examples**: Practical examples based on actual use cases
+- **Performance Insights**: Optimization strategies and performance considerations
+- **Troubleshooting Guides**: Common issues and resolution strategies
+
+### Technical Support
+
+For technical questions, integration support, or platform inquiries:
+
+- **API Reference**: Comprehensive endpoint documentation with examples
+- **Model Documentation**: Detailed data structure specifications
+- **Architecture Guides**: In-depth system design and integration patterns
+- **Performance Optimization**: Best practices for optimal system performance
+
+Textra represents the next generation of accounting automation, combining sophisticated AI technology with robust accounting principles to deliver enterprise-grade financial document processing with French compliance standards.

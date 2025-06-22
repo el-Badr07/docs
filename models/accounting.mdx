@@ -1,0 +1,291 @@
+---
+title: "Accounting Models"
+description: "Comprehensive data models powering the accounting automation pipeline with French PCG compliance"
+---
+
+# Accounting Models
+
+The Accounting Models form the backbone of Textra's accounting automation system, providing sophisticated Pydantic-based data structures that ensure data integrity, validation, and seamless integration throughout the 5-phase processing pipeline. These models are designed with French accounting standards (PCG) in mind while maintaining flexibility for international use.
+
+## Model Architecture Philosophy
+
+### Type Safety and Validation
+
+All accounting models are built using **Pydantic**, providing:
+
+**Runtime Validation**: Every piece of data is validated as it enters the system, preventing invalid data from propagating through the pipeline
+**Type Safety**: Strong typing ensures that financial amounts are always numbers, dates are properly formatted, and enums contain only valid values
+**Automatic Serialization**: Seamless conversion between Python objects, JSON, and database storage formats
+**Documentation Integration**: Models serve as living documentation of the data structures
+
+### Business Logic Integration
+
+The models don't just store data—they embed **business logic** directly into the data structures:
+
+**Validation Rules**: French VAT rates, PCG account number formats, and invoice number patterns are validated automatically
+**Calculation Methods**: Models include methods for calculating totals, validating balances, and generating derived values
+**Compliance Checks**: Built-in validation for French accounting standards and regulatory requirements
+**Confidence Scoring**: Sophisticated algorithms for assessing data quality and extraction confidence
+
+---
+
+## Core Data Models
+
+### ExtractedInvoice - The Foundation Model
+
+This model represents the complete structured data extracted from an invoice document during Phase 1 of the pipeline.
+
+#### Invoice Classification and Metadata
+
+**Invoice Type Recognition**: The system automatically classifies invoices as purchase invoices (factures d'achat) or sales invoices (factures de vente), which determines the appropriate PCG account mappings and journal entry structures.
+
+**Temporal Data Management**: All date fields are stored as ISO-formatted strings with validation to ensure proper formatting. The system handles various date formats found on invoices and normalizes them to a consistent format.
+
+**Currency and Localization**: While the system defaults to EUR (euros) for French accounting, it supports multiple currencies with proper conversion tracking and compliance with multi-currency accounting standards.
+
+#### Financial Data Structure
+
+**Amount Separation**: The model maintains strict separation between:
+- **HT (Hors Taxes)**: Amounts excluding VAT, used for expense/revenue recognition
+- **TTC (Toutes Taxes Comprises)**: Amounts including VAT, used for payment tracking
+- **VAT Details**: Structured breakdown of VAT by rate and amount
+
+**Line Item Granularity**: Each invoice line item is captured with complete detail including:
+- Product/service descriptions for intelligent account mapping
+- Quantities and unit prices for validation and analysis
+- Individual VAT rates and amounts for compliance
+- Product codes when available for enhanced categorization
+
+#### Confidence and Quality Metrics
+
+**Extraction Confidence**: Each extracted invoice includes an overall confidence score (0.0 to 1.0) calculated based on:
+- Data completeness (all required fields extracted)
+- Format validation (proper date formats, numeric values)
+- Cross-validation (line item totals match invoice totals)
+- OCR quality indicators
+
+**Language Detection**: The system automatically detects the invoice language, enabling appropriate processing workflows and compliance with multi-language requirements.
+
+### AccountingProposals - Intelligent PCG Mapping
+
+This model represents the sophisticated account mapping proposals generated during Phase 2, where extracted invoice data is mapped to French PCG accounts.
+
+#### Tiers Account Mapping
+
+**Vendor/Customer Recognition**: The system intelligently maps business entities to appropriate tiers accounts:
+- **401xxx series**: Supplier accounts (Fournisseurs) for purchase invoices
+- **411xxx series**: Customer accounts (Clients) for sales invoices
+- **Automatic Account Creation**: When new vendors/customers are encountered, the system proposes new account numbers following PCG conventions
+
+**Confidence-Based Proposals**: Each tiers proposal includes:
+- **Primary Recommendation**: The most likely account with confidence score
+- **Alternative Options**: Secondary choices when confidence is below threshold
+- **Reasoning Chain**: LLM-generated explanation for the mapping decision
+
+#### Line Item Account Mapping
+
+**Product/Service Categorization**: Each line item gets mapped to appropriate expense or revenue accounts:
+- **6xx series**: Expense accounts for purchases (achats, charges)
+- **7xx series**: Revenue accounts for sales (ventes, produits)
+- **2xx series**: Asset accounts for capital purchases
+
+**VAT Account Handling**: Sophisticated VAT account mapping based on:
+- **Transaction Type**: Purchase vs. sales VAT accounts
+- **VAT Rates**: Different accounts for 20%, 10%, 5.5%, and 0% VAT
+- **Deductibility**: Proper handling of deductible vs. non-deductible VAT
+
+#### Validation and Compliance
+
+**PCG Validation**: All proposed accounts are validated against the official French Chart of Accounts to ensure:
+- Account numbers exist and are active
+- Account types match the transaction nature
+- Regulatory compliance is maintained
+
+**Confidence Thresholds**: The system uses sophisticated confidence scoring to:
+- Flag low-confidence mappings for human review
+- Automatically approve high-confidence mappings
+- Provide detailed reasoning for all proposals
+
+### FinalAccountingEntry - Complete Journal Entries
+
+This model represents the final balanced double-entry journal entries that form the accounting output of the system.
+
+#### Double-Entry Validation
+
+**Balance Enforcement**: Every journal entry is automatically validated to ensure:
+- Total debits equal total credits (fundamental accounting principle)
+- All amounts are positive and properly formatted
+- Currency consistency throughout the entry
+
+**Line Item Structure**: Each journal line includes:
+- **Account Information**: PCG account number and official title
+- **Amount Classification**: Clear separation of debit and credit amounts
+- **Descriptions**: Detailed descriptions linking back to source documents
+- **Reference Data**: Traceability to original invoice line items
+
+#### French Accounting Compliance
+
+**Journal Type Classification**: Entries are properly classified according to French accounting standards:
+- **Journal des Achats (JA)**: Purchase journal for supplier invoices
+- **Journal des Ventes (JV)**: Sales journal for customer invoices
+- **Journal de Banque (BQ)**: Bank journal for payment transactions
+- **Journal des Opérations Diverses (OD)**: Miscellaneous operations journal
+
+**Reference Standards**: All entries comply with:
+- **FEC Format**: Fichier des Écritures Comptables for regulatory reporting
+- **PCG Structure**: Proper use of French chart of accounts
+- **VAT Regulations**: Compliance with French VAT reporting requirements
+
+#### Enhanced Metadata
+
+**Traceability**: Complete audit trail linking journal entries back to:
+- Original source documents
+- Extraction results and confidence scores
+- Account mapping decisions and reasoning
+- Processing timestamps and user actions
+
+**Multi-Language Support**: Journal descriptions are generated in multiple languages:
+- **French**: Primary language for compliance
+- **English**: International business support
+- **Arabic**: Regional business requirements
+
+---
+
+## Specialized Models
+
+### PaymentStatusUpdate - Payment Tracking
+
+This model handles the complex requirements of payment status management for invoices.
+
+#### Payment Status Enumeration
+
+**Comprehensive Status Tracking**:
+- **Unpaid**: Invoice issued but payment not received
+- **Paid**: Full payment received and reconciled
+- **Partially Paid**: Partial payment with remaining balance
+- **Overdue**: Payment past due date with automatic aging
+- **Cancelled**: Invoice cancelled or voided
+
+#### Payment Method Classification
+
+**French Payment Methods**: Support for common French business payment methods:
+- **Virement Bancaire**: Bank transfers (most common)
+- **Chèque**: Check payments with proper tracking
+- **Espèces**: Cash payments with compliance considerations
+- **Carte de Crédit**: Credit card payments
+- **Prélèvement Automatique**: Direct debit arrangements
+
+#### Financial Journal Integration
+
+**Automatic Journal Generation**: When payment status is updated, the system can automatically generate:
+- **Bank Journal Entries**: Recording the payment transaction
+- **Customer/Supplier Account Updates**: Clearing the receivable/payable
+- **VAT Adjustments**: Handling VAT timing differences if applicable
+
+### FinancialJournalEntry - Payment Journals
+
+This specialized model handles the generation of financial journal entries for payment transactions, separate from the initial purchase/sale journal entries.
+
+#### Payment-Specific Journal Types
+
+**Bank Journal (BQ)**: Records bank account movements:
+- Debit to bank account for customer payments received
+- Credit to bank account for supplier payments made
+- Proper bank account coding and reference numbers
+
+**Cash Journal (CS)**: Handles cash transactions:
+- Cash receipts from customers
+- Cash payments to suppliers
+- Petty cash management and reconciliation
+
+#### Integration with Core Accounting
+
+**Two-Stage Journal Process**: The system maintains separation between:
+1. **Commercial Journals**: Recording the business transaction (purchase/sale)
+2. **Financial Journals**: Recording the payment transaction
+
+This separation enables proper cash flow tracking and compliance with French accounting practices where commercial and financial aspects are often recorded separately.
+
+---
+
+## Validation and Business Rules
+
+### Data Integrity Enforcement
+
+#### Financial Validation Rules
+
+**Amount Consistency**: Sophisticated validation ensures:
+- Line item amounts sum to invoice totals
+- VAT calculations are mathematically correct
+- Currency amounts have appropriate decimal precision
+- No negative amounts in inappropriate contexts
+
+**Date Logic Validation**: Business rules for dates include:
+- Invoice dates cannot be in the future
+- Due dates must be after invoice dates
+- Payment dates must be logical relative to invoice dates
+- Fiscal year consistency for accounting periods
+
+#### PCG Compliance Rules
+
+**Account Number Validation**: Strict validation of PCG account numbers:
+- Proper digit structure and check digits
+- Account existence in the official chart
+- Appropriate account types for transaction nature
+- Compliance with French accounting plan structure
+
+**VAT Rate Validation**: Enforcement of French VAT regulations:
+- Valid VAT rates (20%, 10%, 5.5%, 2.1%, 0%)
+- Proper application based on product/service type
+- Compliance with VAT exemption rules
+- Correct handling of intra-EU transactions
+
+### Error Handling and Recovery
+
+#### Graceful Degradation
+
+**Confidence-Based Processing**: When validation fails or confidence is low:
+- System continues processing with warnings
+- Human review workflows are triggered
+- Partial results are preserved for correction
+- Complete audit trails are maintained
+
+**Recovery Mechanisms**: Built-in recovery for common issues:
+- Missing account mappings trigger fallback rules
+- Invalid amounts are flagged but don't stop processing
+- Date format issues are automatically corrected when possible
+- Currency conversion errors are handled gracefully
+
+---
+
+## Performance and Optimization
+
+### Efficient Data Structures
+
+#### Memory Optimization
+
+**Selective Loading**: Models support lazy loading of expensive fields:
+- Full OCR text is only loaded when needed
+- Large JSON responses are compressed in storage
+- Historical data is archived but remains accessible
+- Caching strategies minimize memory usage
+
+#### Serialization Performance
+
+**Optimized JSON Handling**: Custom serialization for performance:
+- DateTime objects are efficiently serialized
+- Large nested structures are optimized
+- Database ObjectIds are handled seamlessly
+- Compression is applied to large text fields
+
+### Scalability Considerations
+
+#### Horizontal Scaling
+
+**Stateless Design**: Models are designed for distributed processing:
+- No shared state between model instances
+- Thread-safe validation and calculation methods
+- Efficient serialization for inter-service communication
+- Support for async processing patterns
+
+The Accounting Models provide the foundation for reliable, compliant, and efficient processing of financial documents while maintaining the flexibility needed for diverse business requirements and international expansion. 

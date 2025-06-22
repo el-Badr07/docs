@@ -1,0 +1,217 @@
+---
+title: "Database Service"
+description: "MongoDB-based data persistence layer for the complete accounting automation pipeline"
+---
+
+# Database Service
+
+The Database Service is the cornerstone of Textra's data persistence architecture, providing a comprehensive MongoDB-based solution for managing the entire accounting automation pipeline. This service handles everything from initial invoice uploads to final journal entry storage, ensuring data integrity and performance throughout the process.
+
+## System Architecture
+
+### Core Responsibilities
+
+The Database Service manages the complete data lifecycle of invoice processing through a carefully designed collection structure that mirrors the 5-phase accounting pipeline:
+
+**Phase Tracking**: Each phase of the accounting pipeline (extraction, imputation, journal generation, validation, export) is tracked with detailed metadata, allowing for complete audit trails and process monitoring.
+
+**Data Relationships**: The service maintains referential integrity between related documents across collections, enabling complex queries and reporting while maintaining performance.
+
+**Performance Optimization**: Strategic indexing and query optimization ensure fast data retrieval even with large volumes of processed invoices.
+
+**Async Operations**: Built on Motor (async MongoDB driver) to handle concurrent operations efficiently without blocking the main application thread.
+
+### Database Design Philosophy
+
+The database schema follows a **document-per-phase** approach where each major processing phase stores its results in dedicated collections. This design provides several advantages:
+
+- **Isolation**: Each phase can be independently queried and analyzed
+- **Scalability**: Collections can be optimized individually based on access patterns
+- **Debugging**: Easy to trace issues through specific phases
+- **Reporting**: Phase-specific analytics and performance monitoring
+- **Recovery**: Granular recovery options if specific phases fail
+
+---
+
+## Collection Architecture
+
+### 1. Processed Invoices - The Master Record
+
+This collection serves as the central registry for all invoice processing activities. Every invoice that enters the system gets a record here, which then becomes the primary key for all subsequent processing phases.
+
+**Key Information Stored:**
+- Invoice identification and file metadata
+- Processing status tracking through all phases
+- LLM provider used for processing
+- Task management and Celery job tracking
+- Export file paths and completion status
+- Error tracking and debugging information
+
+**Status Flow Management:**
+The processing status field tracks the invoice through its complete lifecycle: `pending` → `extracting` → `extracted` → `imputing` → `imputed` → `generating` → `generated` → `exporting` → `exported` → `completed`
+
+This granular status tracking allows for precise monitoring of where invoices are in the pipeline and enables automatic recovery from failures.
+
+### 2. Extraction Data - OCR and AI Results
+
+This collection stores the results from Phase 1 of the pipeline, where raw invoice documents are converted into structured data through OCR and Large Language Model processing.
+
+**OCR Integration:**
+The service stores both the raw OCR text and the structured data extracted by the LLM. This dual storage approach enables:
+- **Debugging**: When LLM extraction fails, the raw OCR text is available for analysis
+- **Reprocessing**: Invoices can be reprocessed with different LLM providers without re-running OCR
+- **Quality Analysis**: Comparison between OCR quality and extraction success rates
+
+**Confidence Scoring:**
+Each extraction includes detailed confidence scores that help identify potential issues early in the pipeline. These scores are calculated based on:
+- Data completeness (all required fields extracted)
+- Format validation (dates, amounts, VAT rates)
+- Cross-validation between line items and totals
+- LLM response coherence and structure
+
+### 3. Accounting Proposals - PCG Mapping Intelligence
+
+This collection contains the sophisticated account mapping proposals generated in Phase 2, where the extracted invoice data is mapped to French PCG (Plan Comptable Général) accounts.
+
+**Intelligent Account Mapping:**
+The system doesn't just store account numbers—it stores the complete reasoning process:
+- **Confidence Levels**: Each proposed account comes with a confidence score
+- **LLM Reasoning**: The AI's explanation for why specific accounts were chosen
+- **Validation Results**: Whether proposed accounts exist in the PCG and are valid
+- **Alternative Suggestions**: Secondary account options when primary choices have low confidence
+
+**Tiers vs Line Item Proposals:**
+The system distinguishes between:
+- **Tiers Proposals**: Vendor/customer account mappings (401xxx for suppliers, 411xxx for customers)
+- **Line Item Proposals**: Product/service account mappings (6xx for purchases, 7xx for sales) plus corresponding VAT accounts
+
+### 4. Journal Entries - The Financial Output
+
+This collection stores the final balanced double-entry journal entries that represent the accounting output of the entire pipeline.
+
+**Double-Entry Validation:**
+Every journal entry is automatically validated to ensure:
+- **Balance Verification**: Total debits must equal total credits
+- **Account Validation**: All account numbers exist in the PCG
+- **VAT Consistency**: VAT calculations match the extracted amounts
+- **Line Item Traceability**: Each journal line can be traced back to its source
+
+**French Accounting Compliance:**
+The journal entries are structured to comply with French accounting standards:
+- **Journal Types**: Proper classification (purchase journal, sales journal, bank journal)
+- **PCG Account Structure**: Correct use of French chart of accounts
+- **VAT Handling**: Proper separation of HT (excluding VAT) and TTC (including VAT) amounts
+- **Reference Standards**: Compliance with FEC (Fichier des Écritures Comptables) format
+
+### 5. Enhanced Journal Entries - Extended Metadata
+
+This collection provides an enhanced version of journal entries with additional metadata for advanced reporting and integration needs.
+
+**Extended Information:**
+- **Due Date Calculations**: Automatic calculation based on payment terms
+- **Multi-language Descriptions**: Support for French, English, and Arabic descriptions
+- **Analytical Codes**: Support for cost center and project tracking
+- **Third-Party Codes**: Enhanced vendor/customer identification
+- **VAT Codes**: Detailed VAT classification for reporting
+
+### 6. Processing Metrics - Performance Intelligence
+
+This collection captures detailed performance metrics for every invoice processed, enabling comprehensive system monitoring and optimization.
+
+**Performance Tracking:**
+- **Phase Timing**: Detailed timing for each processing phase
+- **Cache Performance**: Hit rates and efficiency metrics
+- **LLM Usage**: Token consumption and API call statistics
+- **Confidence Analysis**: Correlation between confidence scores and accuracy
+- **Error Patterns**: Analysis of common failure points
+
+---
+
+## Data Flow and Relationships
+
+### Processing Pipeline Data Flow
+
+The data flow through the database follows a strict sequence that mirrors the accounting pipeline:
+
+1. **Initial Record Creation**: When an invoice is uploaded, a record is created in `processed_invoices` with status "pending"
+
+2. **Extraction Phase**: OCR and LLM processing results are stored in `extraction_data` with a reference to the processing record
+
+3. **Imputation Phase**: PCG account mapping proposals are stored in `accounting_proposals` with references to both processing and extraction records
+
+4. **Journal Generation**: Final journal entries are created in `journal_entries` with references to all previous phases
+
+5. **Enhancement**: Enhanced journal entries with additional metadata are stored in `enhanced_journal_entries`
+
+6. **Metrics Collection**: Performance data is captured in `processing_metrics` throughout the entire process
+
+### Referential Integrity
+
+The service maintains strict referential integrity through ObjectId references:
+- All collections reference back to the master `processed_invoices` record
+- Sequential phases reference their immediate predecessors
+- This creates a complete audit trail for every invoice processed
+
+### Query Optimization Strategy
+
+The database is optimized for several key query patterns:
+
+**Real-time Status Queries**: Fast lookup of processing status for user interfaces
+**Historical Analysis**: Efficient aggregation queries for reporting and analytics
+**Error Investigation**: Quick access to failed processing attempts with full context
+**Performance Monitoring**: Rapid calculation of system performance metrics
+
+---
+
+## Performance and Scalability
+
+### Indexing Strategy
+
+The service implements a comprehensive indexing strategy designed for the specific access patterns of the accounting pipeline:
+
+**Primary Indexes**: Fast lookup by invoice ID, processing status, and creation date
+**Compound Indexes**: Optimized for common multi-field queries
+**Text Indexes**: Full-text search across vendor names and invoice numbers
+**Sparse Indexes**: Efficient handling of optional fields
+
+### Connection Management
+
+The service uses MongoDB's connection pooling to handle concurrent operations efficiently:
+- **Async Operations**: All database operations are non-blocking
+- **Connection Pooling**: Automatic management of database connections
+- **Error Recovery**: Automatic reconnection and retry logic
+- **Resource Management**: Proper cleanup of resources and connections
+
+### Data Integrity and Recovery
+
+**Backup Strategy**: The service provides metadata for backup operations, including document counts and integrity checks
+
+**Recovery Procedures**: Built-in data validation methods to identify and resolve integrity issues
+
+**Audit Trails**: Complete processing history for every invoice, enabling forensic analysis when needed
+
+---
+
+## Integration and APIs
+
+### Service Initialization
+
+The Database Service is initialized during application startup and provides global access through dependency injection patterns. This ensures consistent database connections across all application components.
+
+### Error Handling
+
+Comprehensive error handling includes:
+- **Connection Failures**: Automatic retry with exponential backoff
+- **Data Validation**: Schema validation before insertion
+- **Constraint Violations**: Graceful handling of duplicate records
+- **Performance Issues**: Query timeout handling and optimization suggestions
+
+### Monitoring and Health Checks
+
+The service provides detailed health check endpoints that report:
+- **Connection Status**: Database connectivity and response times
+- **Collection Statistics**: Document counts and storage usage
+- **Performance Metrics**: Query performance and index effectiveness
+- **Data Integrity**: Validation of cross-collection references
+
+The Database Service forms the foundation of Textra's accounting automation, providing reliable, scalable, and intelligent data management that supports the complex requirements of automated financial document processing while maintaining the strict standards required for accounting compliance. 
