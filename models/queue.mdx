@@ -1,0 +1,510 @@
+---
+title: "Queue Models"
+description: "Pydantic models for RabbitMQ message queue system and task management"
+---
+
+The Queue Models define the data structures for Textra's RabbitMQ-based message queue system, enabling asynchronous processing, task distribution, and reliable message handling across the accounting automation pipeline.
+
+## Core Enumerations
+
+### TaskStatus
+
+```python
+class TaskStatus(str, Enum):
+    PENDING = "PENDING"
+    STARTED = "STARTED"
+    PROGRESS = "PROGRESS"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    RETRY = "RETRY"
+```
+
+**Status Lifecycle:**
+- **PENDING**: Task submitted to queue, awaiting worker pickup
+- **STARTED**: Worker has begun processing the task
+- **PROGRESS**: Task is actively being processed with progress updates
+- **SUCCESS**: Task completed successfully
+- **FAILURE**: Task failed and requires investigation
+- **RETRY**: Task failed but will be retried automatically
+
+### TaskPriority
+
+```python
+class TaskPriority(int, Enum):
+    LOW = 1
+    NORMAL = 5
+    HIGH = 9
+```
+
+**Priority Processing:**
+- **HIGH (9)**: Critical tasks processed first (system health, error recovery)
+- **NORMAL (5)**: Standard processing priority (regular invoice processing)
+- **LOW (1)**: Background tasks (cleanup, archiving, reporting)
+
+## Base Task Models
+
+### TaskMessage
+
+```python
+class TaskMessage(BaseModel):
+    task_id: str = Field(..., description="Unique task identifier")
+    task_type: str = Field(..., description="Type of task")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Task creation timestamp")
+    priority: TaskPriority = Field(default=TaskPriority.NORMAL, description="Task priority")
+    retry_count: int = Field(default=0, description="Number of retries")
+    max_retries: int = Field(default=3, description="Maximum number of retries")
+    args: List[Any] = Field(default_factory=list, description="Positional arguments")
+    kwargs: Dict[str, Any] = Field(default_factory=dict, description="Keyword arguments")
+```
+
+**Base Structure Example:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "task_type": "invoice_processing",
+  "created_at": "2024-01-15T10:30:00Z",
+  "priority": 5,
+  "retry_count": 0,
+  "max_retries": 3,
+  "args": [],
+  "kwargs": {}
+}
+```
+
+### TaskResult
+
+```python
+class TaskResult(BaseModel):
+    task_id: str = Field(..., description="Task ID this result belongs to")
+    status: TaskStatus = Field(..., description="Task status")
+    result: Optional[Any] = Field(None, description="Task result data if successful")
+    error: Optional[Dict[str, Any]] = Field(None, description="Error information if failed")
+    progress: Optional[Dict[str, Any]] = Field(None, description="Progress information")
+    completed_at: Optional[datetime] = Field(None, description="Task completion timestamp")
+```
+
+**Success Result Example:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "SUCCESS",
+  "result": {
+    "invoice_id": "INV-12345678-231201",
+    "processing_time": 12.45,
+    "export_files": ["invoice_001.csv", "invoice_001.xml"]
+  },
+  "error": null,
+  "progress": {
+    "completion_percentage": 100,
+    "current_phase": "Export Complete"
+  },
+  "completed_at": "2024-01-15T10:32:15Z"
+}
+```
+
+**Error Result Example:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440001",
+  "status": "FAILURE",
+  "result": null,
+  "error": {
+    "error_type": "OCRExtractionError",
+    "error_message": "Unable to extract text from PDF",
+    "error_details": {
+      "file_path": "/uploads/corrupted_invoice.pdf",
+      "file_size": 0,
+      "page_count": 0
+    }
+  },
+  "progress": {
+    "completion_percentage": 15,
+    "current_phase": "Phase 1 - Data Extraction"
+  },
+  "completed_at": "2024-01-15T10:31:30Z"
+}
+```
+
+## Specialized Task Messages
+
+### InvoiceProcessingMessage
+
+```python
+class InvoiceProcessingMessage(TaskMessage):
+    task_type: str = "invoice_processing"
+    invoice_id: str = Field(..., description="ID of the invoice to process")
+    file_path: str = Field(..., description="Path to the invoice file")
+    processing_id: str = Field(..., description="Processing ID for tracking")
+    force_language: Optional[str] = Field(None, description="Force specific language for processing")
+```
+
+**Single Invoice Processing:**
+```json
+{
+  "task_id": "inv-550e8400-e29b-41d4",
+  "task_type": "invoice_processing",
+  "invoice_id": "INV-12345678-231201",
+  "file_path": "/uploads/invoices/invoice_001.pdf",
+  "processing_id": "proc-65a1b2c3d4e5f6789",
+  "force_language": "fr",
+  "created_at": "2024-01-15T10:30:00Z",
+  "priority": 5,
+  "retry_count": 0,
+  "max_retries": 3
+}
+```
+
+### BatchProcessingMessage
+
+```python
+class BatchProcessingMessage(TaskMessage):
+    task_type: str = "batch_processing"
+    file_paths: List[str] = Field(..., description="Paths to invoice files")
+    processing_ids: List[str] = Field(..., description="Processing IDs for tracking")
+    force_language: Optional[str] = Field(None, description="Force specific language for processing")
+```
+
+**Batch Processing Example:**
+```json
+{
+  "task_id": "batch-550e8400-e29b-41d4",
+  "task_type": "batch_processing",
+  "file_paths": [
+    "/uploads/invoices/invoice_001.pdf",
+    "/uploads/invoices/invoice_002.pdf",
+    "/uploads/invoices/invoice_003.pdf"
+  ],
+  "processing_ids": [
+    "proc-65a1b2c3d4e5f6789",
+    "proc-65a1b2c3d4e5f678a",
+    "proc-65a1b2c3d4e5f678b"
+  ],
+  "force_language": "fr",
+  "created_at": "2024-01-15T10:30:00Z",
+  "priority": 5
+}
+```
+
+### ExportAccountingMessage
+
+```python
+class ExportAccountingMessage(TaskMessage):
+    task_type: str = "export_accounting"
+    invoice_id: str = Field(..., description="ID of the invoice to export")
+    export_formats: List[str] = Field(..., description="Export formats")
+    export_path: Optional[str] = Field(None, description="Export path")
+```
+
+**Export Task Example:**
+```json
+{
+  "task_id": "export-550e8400-e29b-41d4",
+  "task_type": "export_accounting",
+  "invoice_id": "INV-12345678-231201",
+  "export_formats": ["csv", "xml", "sage"],
+  "export_path": "/exports/2024-01-15/",
+  "created_at": "2024-01-15T10:35:00Z",
+  "priority": 3
+}
+```
+
+## Financial Document Processing Tasks
+
+### FinancialDocumentProcessingMessage
+
+```python
+class FinancialDocumentProcessingMessage(TaskMessage):
+    task_type: str = "financial_document_processing"
+    document_id: str = Field(..., description="Document ID to process")
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    document_type: str = Field(..., description="Type of document to process")
+    user_id: Optional[str] = Field(None, description="User ID who initiated the processing")
+    processing_options: Optional[Dict[str, Any]] = Field(None, description="Additional processing options")
+```
+
+**Document Processing Example:**
+```json
+{
+  "task_id": "doc-550e8400-e29b-41d4",
+  "task_type": "financial_document_processing",
+  "document_id": "DOC-87654321-231201",
+  "invoice_id": "INV-12345678-231201",
+  "document_type": "bank_statement",
+  "user_id": "user123",
+  "processing_options": {
+    "account_number": "FR1420041010050500013M02606",
+    "statement_period": "2024-01"
+  },
+  "created_at": "2024-01-15T14:30:00Z",
+  "priority": 5
+}
+```
+
+### IntelligentJournalGenerationMessage
+
+```python
+class IntelligentJournalGenerationMessage(TaskMessage):
+    task_type: str = "intelligent_journal_generation"
+    document_id: str = Field(..., description="Document ID to generate journal for")
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    document_type: str = Field(..., description="Type of document")
+    journal_type: Optional[str] = Field(None, description="Target journal type")
+    user_id: Optional[str] = Field(None, description="User ID who initiated the generation")
+```
+
+**LLM Journal Generation:**
+```json
+{
+  "task_id": "journal-550e8400-e29b-41d4",
+  "task_type": "intelligent_journal_generation",
+  "document_id": "DOC-87654321-231201",
+  "invoice_id": "INV-12345678-231201",
+  "document_type": "expense_receipt",
+  "journal_type": "operations_journal",
+  "user_id": "user123",
+  "created_at": "2024-01-15T14:45:00Z",
+  "priority": 7
+}
+```
+
+### BankStatementProcessingMessage
+
+```python
+class BankStatementProcessingMessage(TaskMessage):
+    task_type: str = "bank_statement_processing"
+    document_id: str = Field(..., description="Document ID to process")
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    user_id: Optional[str] = Field(None, description="User ID who initiated the processing")
+    processing_options: Optional[Dict[str, Any]] = Field(None, description="Processing options like account_number, statement_period")
+```
+
+**Bank Statement Processing:**
+```json
+{
+  "task_id": "bank-550e8400-e29b-41d4",
+  "task_type": "bank_statement_processing",
+  "document_id": "BANK-87654321-231201",
+  "invoice_id": "INV-12345678-231201",
+  "user_id": "user123",
+  "processing_options": {
+    "account_number": "FR1420041010050500013M02606",
+    "statement_period": "2024-01",
+    "reconcile_transactions": true,
+    "auto_categorize": true
+  },
+  "created_at": "2024-01-15T09:00:00Z",
+  "priority": 6
+}
+```
+
+### PayrollProcessingMessage
+
+```python
+class PayrollProcessingMessage(TaskMessage):
+    task_type: str = "payroll_processing"
+    document_id: str = Field(..., description="Document ID to process")
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    user_id: Optional[str] = Field(None, description="User ID who initiated the processing")
+    processing_options: Optional[Dict[str, Any]] = Field(None, description="Processing options like employee_id, pay_period")
+```
+
+**Payroll Document Processing:**
+```json
+{
+  "task_id": "payroll-550e8400-e29b-41d4",
+  "task_type": "payroll_processing",
+  "document_id": "PAY-87654321-231201",
+  "invoice_id": "INV-12345678-231201",
+  "user_id": "user123",
+  "processing_options": {
+    "employee_id": "EMP-001",
+    "pay_period": "2024-01",
+    "include_social_charges": true,
+    "generate_dsn": true
+  },
+  "created_at": "2024-01-15T11:30:00Z",
+  "priority": 7
+}
+```
+
+### ExpenseReceiptProcessingMessage
+
+```python
+class ExpenseReceiptProcessingMessage(TaskMessage):
+    task_type: str = "expense_receipt_processing"
+    document_id: str = Field(..., description="Document ID to process")
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    user_id: Optional[str] = Field(None, description="User ID who initiated the processing")
+    processing_options: Optional[Dict[str, Any]] = Field(None, description="Processing options like expense_category, employee_id")
+```
+
+**Expense Receipt Processing:**
+```json
+{
+  "task_id": "expense-550e8400-e29b-41d4",
+  "task_type": "expense_receipt_processing",
+  "document_id": "EXP-87654321-231201",
+  "invoice_id": "INV-12345678-231201",
+  "user_id": "user123",
+  "processing_options": {
+    "expense_category": "travel",
+    "employee_id": "EMP-001",
+    "reimbursable": true,
+    "validate_vat": true
+  },
+  "created_at": "2024-01-15T16:15:00Z",
+  "priority": 4
+}
+```
+
+## Queue Routing and Configuration
+
+### Task Type to Queue Mapping
+
+```python
+# Queue routing configuration
+TASK_QUEUE_MAPPING = {
+    "invoice_processing": "invoice_queue",
+    "batch_processing": "batch_queue", 
+    "export_accounting": "export_queue",
+    "financial_document_processing": "document_queue",
+    "intelligent_journal_generation": "journal_queue",
+    "bank_statement_processing": "bank_queue",
+    "payroll_processing": "payroll_queue",
+    "expense_receipt_processing": "expense_queue"
+}
+```
+
+### Priority-Based Processing
+
+```python
+# Queue priority settings
+QUEUE_PRIORITIES = {
+    "system_health": 9,        # Highest priority
+    "error_recovery": 9,
+    "invoice_processing": 5,   # Normal priority
+    "batch_processing": 4,     # Slightly lower for batches
+    "export_accounting": 3,    # Lower priority
+    "cleanup_tasks": 1         # Lowest priority
+}
+```
+
+## Message Lifecycle Management
+
+### Retry Logic
+
+```python
+def should_retry(task_message: TaskMessage, error: Dict[str, Any]) -> bool:
+    """Determine if task should be retried based on error type and retry count."""
+    
+    # Don't retry if max retries reached
+    if task_message.retry_count >= task_message.max_retries:
+        return False
+    
+    # Retry on temporary failures
+    retryable_errors = [
+        "NetworkTimeout",
+        "LLMServiceUnavailable", 
+        "DatabaseConnectionError",
+        "TemporaryFileError"
+    ]
+    
+    error_type = error.get("error_type", "")
+    return error_type in retryable_errors
+
+def increment_retry(task_message: TaskMessage) -> TaskMessage:
+    """Create new task message with incremented retry count."""
+    task_message.retry_count += 1
+    task_message.created_at = datetime.utcnow()
+    return task_message
+```
+
+### Dead Letter Queue Handling
+
+```python
+def send_to_dead_letter_queue(task_message: TaskMessage, final_error: Dict[str, Any]):
+    """Send failed task to dead letter queue for manual investigation."""
+    
+    dead_letter_message = {
+        "original_task": task_message.dict(),
+        "final_error": final_error,
+        "failed_at": datetime.utcnow(),
+        "requires_manual_review": True
+    }
+    
+    # Send to dead letter queue for analysis
+    queue_service.publish_message(
+        queue_name="dead_letter_queue",
+        message=dead_letter_message,
+        priority=TaskPriority.HIGH
+    )
+```
+
+## Usage Patterns
+
+### Task Publishing
+
+```python
+async def publish_invoice_task(invoice_id: str, file_path: str) -> str:
+    """Publish invoice processing task to queue."""
+    
+    task_message = InvoiceProcessingMessage(
+        task_id=str(uuid.uuid4()),
+        invoice_id=invoice_id,
+        file_path=file_path,
+        processing_id=str(ObjectId()),
+        priority=TaskPriority.NORMAL
+    )
+    
+    await queue_service.publish_message(
+        queue_name="invoice_queue",
+        message=task_message.dict(),
+        priority=task_message.priority
+    )
+    
+    return task_message.task_id
+```
+
+### Progress Tracking
+
+```python
+async def update_task_progress(task_id: str, progress_data: Dict[str, Any]):
+    """Update task progress for real-time monitoring."""
+    
+    progress_result = TaskResult(
+        task_id=task_id,
+        status=TaskStatus.PROGRESS,
+        progress=progress_data
+    )
+    
+    await queue_service.publish_message(
+        queue_name="progress_queue",
+        message=progress_result.dict(),
+        priority=TaskPriority.HIGH
+    )
+```
+
+### Batch Task Management
+
+```python
+async def create_batch_task(file_paths: List[str]) -> str:
+    """Create batch processing task for multiple files."""
+    
+    processing_ids = [str(ObjectId()) for _ in file_paths]
+    
+    batch_message = BatchProcessingMessage(
+        task_id=f"batch-{uuid.uuid4()}",
+        file_paths=file_paths,
+        processing_ids=processing_ids,
+        priority=TaskPriority.NORMAL
+    )
+    
+    await queue_service.publish_message(
+        queue_name="batch_queue",
+        message=batch_message.dict()
+    )
+    
+    return batch_message.task_id
+```
+
+The Queue Models provide a comprehensive framework for asynchronous task processing, enabling scalable and reliable processing of accounting documents through RabbitMQ message queues with built-in retry logic, priority handling, and error recovery mechanisms. 

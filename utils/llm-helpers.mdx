@@ -3,8 +3,6 @@ title: "LLM Helpers"
 description: "Multi-provider AI integration system with intelligent prompt management and response validation"
 ---
 
-# LLM Helpers
-
 The LLM (Large Language Model) Helpers form the intelligent core of Textra's AI-powered accounting automation, providing sophisticated integration with multiple AI providers while ensuring consistent, reliable, and cost-effective processing of financial documents. This system abstracts the complexity of different AI providers behind a unified interface optimized for accounting workflows.
 
 ## Multi-Provider Architecture
@@ -36,16 +34,6 @@ The LLM Helper system supports multiple leading AI providers, each with specific
 - Specialized tasks requiring GPT-specific capabilities
 - Integration with existing OpenAI-based workflows
 
-### Intelligent Provider Selection
-
-The system doesn't just support multiple providers—it **intelligently selects** the optimal provider based on:
-
-**Document Complexity**: Simple invoices use faster providers, complex documents use more sophisticated models
-**Processing Volume**: High-volume periods automatically route to the fastest available providers
-**Quality Requirements**: Critical processing uses the most accurate providers regardless of speed
-**Cost Optimization**: Balances quality requirements with processing costs
-**Provider Availability**: Automatic failover when providers experience outages or rate limits
-
 ---
 
 ## Advanced Prompt Engineering
@@ -59,29 +47,15 @@ The LLM Helper system uses **sophisticated prompt engineering** techniques speci
 - Consistent data structure across all responses
 - Required field validation at the AI level
 - Type safety for financial amounts, dates, and enumerations
-- Automatic retry with schema corrections when responses don't conform
 
 #### Context-Aware Prompting
 **Dynamic Prompt Assembly**: Prompts are dynamically constructed based on:
-- Document type and complexity detected during initial analysis
+- Document type 
 - User language preferences and regional accounting standards
-- Historical processing results for similar documents
 - Current processing phase requirements and validation needs
 
-#### Multi-Language Prompt Support
-**Localized Processing**: The system maintains prompt templates in multiple languages:
-- **French**: Primary language for French accounting compliance
-- **English**: International business document processing
-- **Arabic**: Regional business requirements and document types
 
 ### Prompt Optimization Strategies
-
-#### Confidence-Based Prompt Refinement
-**Adaptive Prompting**: When initial processing produces low-confidence results:
-- Prompts are automatically refined with additional context
-- Multiple prompt variations are tested to find optimal approaches
-- Successful prompt patterns are cached for future use
-- Failed approaches are logged to prevent repetition
 
 #### Domain-Specific Prompt Libraries
 **Specialized Templates**: Different prompt templates optimized for:
@@ -103,20 +77,6 @@ The LLM Helper system uses **sophisticated prompt engineering** techniques speci
 - **Business Logic**: Checking that VAT calculations are mathematically correct
 - **Completeness**: Verifying all required fields are present and populated
 
-#### Confidence Scoring Integration
-**Quality Assessment**: Each processed response receives comprehensive confidence scoring:
-- **Extraction Completeness**: Percentage of expected fields successfully extracted
-- **Format Consistency**: How well extracted data matches expected patterns
-- **Cross-Validation**: Consistency between different parts of the extracted data
-- **Historical Comparison**: How similar the results are to previously validated documents
-
-#### Automatic Retry Logic
-**Smart Recovery**: When responses fail validation:
-- **Immediate Retry**: Simple formatting issues trigger immediate retry with refined prompts
-- **Provider Switching**: Persistent failures trigger automatic provider switching
-- **Escalation**: Complex failures are escalated to human review with full context
-- **Learning Integration**: Failed patterns are analyzed to improve future processing
-
 ### Caching and Performance Optimization
 
 #### Intelligent Response Caching
@@ -126,12 +86,6 @@ The LLM Helper system uses **sophisticated prompt engineering** techniques speci
 - **Provider-Specific**: Caches are maintained separately for each AI provider
 - **TTL Management**: Cache expiration balances freshness with performance
 
-#### Cost Optimization
-**Token Usage Monitoring**: Comprehensive tracking of AI provider costs:
-- **Per-Document Tracking**: Cost attribution for each processed invoice
-- **Provider Comparison**: Analysis of cost-effectiveness across different providers
-- **Usage Optimization**: Identification of opportunities to reduce token consumption
-- **Budget Management**: Automatic cost controls and alerts
 
 ---
 
@@ -145,29 +99,7 @@ The LLM Helper system uses **sophisticated prompt engineering** techniques speci
 - **API Outages**: Seamless failover to alternative providers
 - **Invalid Responses**: Multiple retry attempts with prompt refinement
 - **Timeout Handling**: Appropriate timeout management for different document complexities
-
-#### Quality Assurance Integration
-**Continuous Monitoring**: Real-time monitoring of processing quality:
-- **Accuracy Tracking**: Comparison of AI results with human validation
-- **Performance Metrics**: Response time and success rate monitoring
-- **Error Pattern Analysis**: Identification of recurring issues for systematic improvement
-- **Provider Performance**: Comparative analysis of different AI providers
-
-### Recovery Mechanisms
-
-#### Graceful Degradation
-**Service Continuity**: When AI services are impaired:
-- **Reduced Functionality**: System continues with limited AI features
-- **Queue Management**: Processing requests are queued for later processing
-- **User Communication**: Clear communication about service limitations
-- **Priority Processing**: Critical documents get priority when services resume
-
-#### Data Preservation
-**No Data Loss**: Even during failures:
-- **Intermediate Results**: Partial processing results are preserved
-- **Retry Context**: Full context is maintained for retry attempts
-- **Audit Trails**: Complete logging of all processing attempts and outcomes
-- **Recovery Information**: Detailed information for manual recovery when needed
+*Priority Processing**: Critical documents get priority when services resume
 
 ---
 
@@ -196,49 +128,3 @@ The LLM Helper system uses **sophisticated prompt engineering** techniques speci
 - **Description Generation**: Intelligent generation of appropriate journal descriptions
 - **Reference Management**: Proper linking between journal entries and source documents
 
-### Business Intelligence Integration
-
-#### Learning and Improvement
-**Continuous Enhancement**: The system continuously improves through:
-- **Pattern Recognition**: Learning from successful processing patterns
-- **Error Analysis**: Understanding and preventing recurring errors
-- **User Feedback**: Incorporation of human corrections and preferences
-- **Performance Optimization**: Ongoing refinement of processing strategies
-
-#### Analytics and Reporting
-**Processing Intelligence**: Comprehensive analytics on AI processing:
-- **Accuracy Metrics**: Detailed tracking of processing accuracy over time
-- **Cost Analysis**: Understanding the cost-effectiveness of different approaches
-- **Performance Trends**: Identification of trends in processing quality and speed
-- **Optimization Opportunities**: Data-driven recommendations for system improvements
-
----
-
-## Security and Compliance
-
-### Data Protection
-
-#### Sensitive Data Handling
-**Privacy Protection**: Careful handling of financial information:
-- **Data Minimization**: Only necessary data is sent to AI providers
-- **Encryption**: All data in transit is properly encrypted
-- **Access Control**: Strict controls on which data can be processed by AI
-- **Audit Logging**: Complete logging of all data sent to external AI services
-
-#### Compliance Integration
-**Regulatory Compliance**: Ensuring AI processing meets regulatory requirements:
-- **GDPR Compliance**: Proper handling of personal data in financial documents
-- **Financial Regulations**: Compliance with financial document processing regulations
-- **Data Retention**: Appropriate retention and deletion of AI processing data
-- **Audit Trails**: Complete audit trails for compliance reporting
-
-### Quality Assurance
-
-#### Validation and Testing
-**Systematic Quality Control**: Comprehensive testing and validation:
-- **Automated Testing**: Continuous testing of AI processing accuracy
-- **Human Validation**: Regular human review of AI processing results
-- **Regression Testing**: Ensuring that system improvements don't introduce new errors
-- **Performance Benchmarking**: Regular benchmarking against quality standards
-
-The LLM Helper system represents a sophisticated approach to AI integration that balances performance, accuracy, cost-effectiveness, and reliability while maintaining the high standards required for financial document processing and accounting compliance. 

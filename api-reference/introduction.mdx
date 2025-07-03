@@ -1,33 +1,193 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: 'API Reference'
+description: 'Comprehensive API documentation for Textra accounting automation platform'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+Welcome to the Textra API documentation. This comprehensive reference covers all endpoints for automating your accounting workflows, from invoice processing to journal entry generation, with support for French PCG compliance and multi-format exports.
 
-## Welcome
+## Overview
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+Textra provides a powerful REST API for accounting automation, built around a sophisticated 5-phase processing pipeline that transforms raw financial documents into compliant accounting entries.
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+### Core API Modules
+
+<CardGroup cols={2}>
+  <Card
+    title="Accounting API"
+    icon="calculator"
+    href="/api-reference/accounting"
+  >
+    Complete invoice processing pipeline with PCG compliance, VAT handling, and multi-format exports
+  </Card>
+  <Card
+    title="Conversations API"
+    icon="comments"
+    href="/api-reference/conversations"
+  >
+    Multi-conversation AI chat system with specialized accounting agents and file handling
+  </Card>
+  <Card
+    title="Financial Documents API"
+    icon="file-invoice"
+    href="/api-reference/financial-documents"
+  >
+    Extended document processing for bank statements, payroll, receipts, and contracts
+  </Card>
+  <Card
+    title="Voice API"
+    icon="microphone"
+    href="/api-reference/voice"
+  >
+    Real-time voice conversations with AI agents using LiveKit integration
+  </Card>
+</CardGroup>
+
+## 5-Phase Processing Pipeline
+
+Textra's accounting automation follows a sophisticated 5-phase pipeline:
+
+<Steps>
+  <Step title="Phase 1 - Data Extraction">
+    OCR and LLM-powered extraction of structured data from invoices and financial documents
+  </Step>
+  <Step title="Phase 2 - Account Imputation">
+    AI-driven mapping to French PCG accounts with confidence scoring and validation
+  </Step>
+  <Step title="Phase 3 - Journal Generation">
+    Creation of balanced double-entry journal entries compliant with French standards
+  </Step>
+  <Step title="Phase 4 - Validation">
+    Comprehensive validation of amounts, accounts, VAT calculations, and compliance rules
+  </Step>
+  <Step title="Phase 5 - Export">
+    Multi-format export (CSV/FEC, XML, JSON, Sage) for integration with accounting software
+  </Step>
+</Steps>
+
+## Key Features
+
+### French Accounting Compliance
+- **PCG Integration**: Complete support for Plan Comptable Général with 8000+ accounts
+- **VAT Handling**: Automatic VAT rate detection and compliant account mapping
+- **FEC Export**: Fichier des Écritures Comptables format for regulatory compliance
+- **Journal Types**: Proper classification (JA, JV, BQ, CS, OD) according to French standards
+
+### Multi-Provider LLM Support
+- **Groq**: High-speed inference for real-time processing
+- **Google Gemini**: Advanced reasoning for complex document analysis
+- **OpenAI**: Fallback processing with proven reliability
+- **Intelligent Routing**: Automatic provider selection based on task requirements
+
+### Comprehensive Document Support
+- **Invoices**: Purchase and sales invoices with line-item detail
+- **Bank Statements**: Transaction extraction and reconciliation
+- **Payroll Documents**: Employee compensation and social charges
+- **Expense Receipts**: Business expense categorization and validation
+- **Contracts & Legal**: Contract analysis and financial term extraction
+
+### Enterprise Features
+- **Async Processing**: Background task queues for high-volume processing
+- **Batch Operations**: Efficient processing of multiple documents
+- **User Management**: Multi-tenant architecture with user isolation
+- **File Management**: Secure upload, storage, and lifecycle management
+- **Performance Analytics**: Detailed metrics and success rate tracking
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API endpoints require authentication using session-based authentication or API keys.
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+### Session Authentication
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "your_username",
+  "password": "your_password"
+}
 ```
+
+### API Key Authentication
+```http
+Authorization: Bearer your_api_key
+Content-Type: application/json
+```
+
+## Rate Limiting
+
+API requests are rate-limited to ensure fair usage:
+
+- **Standard Users**: 100 requests per minute
+- **Premium Users**: 500 requests per minute
+- **Enterprise**: Custom limits based on contract
+
+Rate limit headers are included in all responses:
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1640995200
+```
+
+## Response Format
+
+All API responses follow a consistent JSON structure:
+
+### Success Response
+```json
+{
+  "success": true,
+  "data": {
+    // Response data
+  },
+  "message": "Operation completed successfully",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": {
+      "field": "invoice_date",
+      "issue": "Date format must be YYYY-MM-DD"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+## Status Codes
+
+Textra uses standard HTTP status codes:
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Not Found |
+| 422 | Validation Error |
+| 429 | Rate Limited |
+| 500 | Internal Error |
+
+## Getting Started
+
+1. **Authentication**: Obtain API credentials or set up session authentication
+2. **Upload Documents**: Use the file upload endpoints to submit invoices or documents
+3. **Process Documents**: Trigger processing through the accounting pipeline
+4. **Monitor Progress**: Check processing status using task tracking endpoints
+5. **Retrieve Results**: Download processed data in your preferred format
+
+<Card
+  title="Quick Start Guide"
+  icon="rocket"
+  href="/quickstart"
+>
+  Follow our step-by-step guide to process your first invoice
+</Card>

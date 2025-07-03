@@ -3,8 +3,6 @@ title: "PCG Loader"
 description: "French Chart of Accounts (Plan Comptable Général) integration with intelligent account mapping and validation"
 ---
 
-# PCG Loader
-
 The PCG Loader is a sophisticated utility that provides comprehensive integration with the French Chart of Accounts (Plan Comptable Général), enabling intelligent account mapping, validation, and compliance checking throughout Textra's accounting automation pipeline. This system manages over 8,000 account definitions and provides the foundation for French accounting compliance.
 
 ## PCG System Overview
@@ -147,55 +145,18 @@ Sales VAT (Collected):
 
 ## Advanced Features
 
-### Confidence Scoring System
-
-#### Account Mapping Confidence
-
-The PCG Loader implements a sophisticated confidence scoring system for account mappings:
-
-**Confidence Factors**:
-- **Exact Match**: Direct matches with known vendors/products score highest (0.95-1.0)
-- **Semantic Similarity**: Similar business names or product descriptions (0.80-0.95)
-- **Category Match**: Appropriate account class for transaction type (0.70-0.85)
-- **Historical Patterns**: Learning from previous successful mappings (0.75-0.90)
-- **Validation Rules**: Compliance with PCG structure and business rules (0.80-0.95)
-
-**Confidence Thresholds**:
-- **Auto-Approve**: Confidence > 0.90 - Automatic approval
-- **Review Recommended**: 0.70 < Confidence ≤ 0.90 - Human review suggested
-- **Manual Required**: Confidence ≤ 0.70 - Manual intervention required
-
-#### Learning and Improvement
-
-**Adaptive Learning System**:
-- **Success Pattern Recognition**: Learn from approved mappings to improve future suggestions
-- **Error Pattern Analysis**: Analyze rejected mappings to avoid similar mistakes
-- **User Preference Learning**: Adapt to specific user or company mapping preferences
-- **Industry-Specific Patterns**: Develop industry-specific mapping intelligence
-
 ### Compliance and Validation
-
-#### Regulatory Compliance
 
 **French Accounting Standards**:
 - **PCG Structure Compliance**: Ensure all mappings follow official PCG structure
 - **Account Usage Rules**: Validate that accounts are used for appropriate transaction types
 - **Mandatory Account Requirements**: Enforce required accounts for specific business activities
-- **Regulatory Updates**: Automatic compliance with PCG regulation changes
 
 **Validation Checks**:
 - **Account Existence**: Verify all proposed accounts exist in current PCG
 - **Account Status**: Check that accounts are active and not deprecated
 - **Business Logic**: Ensure mappings make business sense (e.g., no expense accounts for revenue)
 - **Balance Sheet Impact**: Validate impact on financial statement presentation
-
-#### Audit Trail and Documentation
-
-**Complete Traceability**:
-- **Mapping History**: Complete history of account mapping decisions
-- **Confidence Evolution**: Track how confidence scores change over time
-- **User Overrides**: Record when users override system suggestions
-- **Regulatory Justification**: Documentation supporting account mapping choices
 
 ---
 
@@ -215,7 +176,6 @@ The PCG Loader is deeply integrated with Phase 2 of the accounting pipeline (Acc
 - **Batch Processing**: Efficient handling of multiple invoices simultaneously
 - **Caching Strategy**: Intelligent caching of frequently used mappings
 - **Parallel Processing**: Concurrent account mapping for different invoice components
-- **Resource Management**: Optimized memory usage for large-scale processing
 
 ### LLM Integration
 
@@ -230,123 +190,15 @@ The PCG Loader is deeply integrated with Phase 2 of the accounting pipeline (Acc
 **Prompt Engineering**:
 - **PCG-Specific Prompts**: Specialized prompts that understand French accounting structure
 - **Business Context**: Include relevant business information in mapping decisions
-- **Confidence Calibration**: Train LLMs to provide accurate confidence assessments
-- **Error Prevention**: Prompts designed to avoid common mapping mistakes
 
 ---
 
-## Performance and Scalability
-
-### High-Performance Architecture
-
-#### Optimized Data Structures
-
-**Memory Efficiency**:
-- **Hierarchical Storage**: Efficient storage of PCG hierarchy in memory
-- **Index Optimization**: Multiple indexes for different search patterns
-- **Compression**: Compressed storage of account descriptions and metadata
-- **Lazy Loading**: Load detailed account information only when needed
-
-**Query Optimization**:
-- **Search Algorithms**: Optimized algorithms for text and code-based searches
-- **Caching Layers**: Multi-level caching for different types of queries
-- **Batch Operations**: Efficient batch processing for multiple account lookups
-- **Connection Pooling**: Optimized database connection management
-
-#### Scalability Features
-
-**Horizontal Scaling**:
-- **Distributed Caching**: Redis-based distributed caching for account data
-- **Load Balancing**: Distribution of account mapping requests across instances
-- **Microservice Architecture**: Standalone PCG service for independent scaling
-- **API Rate Limiting**: Intelligent rate limiting to prevent system overload
-
-**Performance Monitoring**:
-- **Response Time Tracking**: Continuous monitoring of account lookup performance
-- **Cache Hit Rate Analysis**: Optimization of caching strategies
-- **Memory Usage Monitoring**: Tracking and optimization of memory consumption
-- **Query Performance**: Analysis and optimization of search query performance
-
----
-
-## Configuration and Customization
-
+--
 ### Business-Specific Customization
-
-#### Company-Specific Account Plans
 
 **Customization Options**:
 - **Account Extensions**: Add company-specific sub-accounts within PCG structure
 - **Custom Mappings**: Define company-specific vendor and product mappings
 - **Industry Adaptations**: Tailor account mappings for specific industries
-- **Regional Variations**: Support for regional accounting variations within France
-
-**Configuration Management**:
-- **Version Control**: Track changes to custom account configurations
-- **Rollback Capability**: Ability to revert to previous configurations
-- **Testing Environment**: Safe testing of configuration changes
-- **Deployment Pipeline**: Controlled deployment of configuration updates
-
-#### Integration Settings
-
-**System Integration**:
-- **ERP Compatibility**: Configure mappings for specific ERP system requirements
-- **Export Formats**: Customize account number formats for different systems
-- **Validation Rules**: Configure business-specific validation requirements
-- **Approval Workflows**: Set up custom approval processes for account mappings
 
 ---
-
-## Monitoring and Analytics
-
-### Usage Analytics
-
-#### Account Mapping Statistics
-
-**Performance Metrics**:
-- **Mapping Accuracy**: Track accuracy of automatic account mappings
-- **Confidence Distribution**: Analyze distribution of confidence scores
-- **User Override Rates**: Monitor how often users override system suggestions
-- **Processing Speed**: Track performance of account mapping operations
-
-**Business Intelligence**:
-- **Popular Accounts**: Identify most frequently used accounts
-- **Mapping Patterns**: Analyze common mapping patterns and trends
-- **Error Analysis**: Identify and analyze mapping errors and their causes
-- **Optimization Opportunities**: Identify areas for mapping improvement
-
-#### System Health Monitoring
-
-**Operational Metrics**:
-- **System Availability**: Monitor PCG Loader uptime and availability
-- **Response Times**: Track response times for different types of queries
-- **Error Rates**: Monitor and alert on system errors and failures
-- **Resource Usage**: Track CPU, memory, and storage usage patterns
-
-**Predictive Analytics**:
-- **Capacity Planning**: Predict future resource requirements
-- **Performance Trends**: Analyze performance trends over time
-- **Optimization Recommendations**: Automated recommendations for system optimization
-- **Maintenance Scheduling**: Optimal timing for system maintenance activities
-
----
-
-## Security and Compliance
-
-### Data Protection
-
-#### Sensitive Data Handling
-
-**Security Measures**:
-- **Access Control**: Role-based access to PCG data and mapping functions
-- **Audit Logging**: Complete logging of all PCG operations and changes
-- **Data Encryption**: Encryption of sensitive account mapping data
-- **Secure Communication**: Encrypted communication for all PCG operations
-
-**Compliance Requirements**:
-- **GDPR Compliance**: Privacy protection for vendor and customer data
-- **Accounting Regulations**: Compliance with French accounting data retention requirements
-- **Audit Trail**: Complete audit trail for regulatory compliance
-- **Data Integrity**: Measures to ensure PCG data accuracy and consistency
-
-The PCG Loader represents a sophisticated integration with French accounting standards, providing the intelligence and compliance foundation that enables Textra to automatically generate accurate, compliant accounting entries while maintaining the flexibility needed for diverse business requirements. 

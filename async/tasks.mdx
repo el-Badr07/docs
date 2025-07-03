@@ -1,25 +1,22 @@
 ---
-title: "Celery Tasks"
-description: "Comprehensive background task processing system for scalable accounting automation workflows"
+title: "Task Manager (RabbitMQ)"
+description: "High-throughput background task processing with RabbitMQ and async workers"
 ---
-
-# Celery Tasks
-
-The Celery Tasks system forms the backbone of Textra's asynchronous processing capabilities, enabling scalable, reliable, and efficient background processing of accounting workflows. This distributed task queue system handles everything from individual invoice processing to large-scale batch operations while providing comprehensive monitoring, error handling, and performance optimization.
+The RabbitMQ Task Manager forms the backbone of Textra's asynchronous processing capabilities, enabling scalable, reliable, and efficient background processing of accounting workflows without the Celery runtime.
 
 ## Task Architecture
 
-### Distributed Task Processing
+### Distributed Task Processing with RabbitMQ
 
-The Celery-based task system is designed around several core principles:
+The Task Manager is designed around the same core principles as before, but implemented with native async Python and RabbitMQ:
 
-**Scalability**: Horizontal scaling with multiple worker nodes processing tasks concurrently
-**Reliability**: Robust error handling, retry mechanisms, and failure recovery
-**Observability**: Comprehensive monitoring and logging of all task execution
-**Flexibility**: Support for various task types with different processing requirements
-**Performance**: Optimized task routing and resource utilization
+- **Scalability**: Simply start more `python -m src.message_worker.run_worker` instances
+- **Reliability**: Robust error handling, retry, and dead-letter queues
+- **Observability**: Real-time status cached in Redis; progress endpoints `/api/accounting/task-status/{task_id}`
+- **Flexibility**: Multiple task types defined in `src/models/queue_models.py`
+- **Performance**: Prefetch + QoS tuning in `queue_service.py`
 
-### Task Categories
+## Task Categories
 
 **Invoice Processing Tasks**:
 - **process_invoice_async**: Complete invoice processing through 5-phase pipeline
@@ -330,4 +327,4 @@ monthly_workflow = chain(
 - **Data Lineage**: Tracking of data flow through task processing
 - **Regulatory Compliance**: Adherence to financial industry regulations
 
-The Celery Tasks system provides a robust, scalable, and reliable foundation for all background processing needs in Textra, ensuring that accounting workflows can be processed efficiently and reliably while maintaining the highest standards of performance, security, and compliance. 
+The RabbitMQ Task Manager provides a robust, scalable, and reliable foundation for all background processing needs in Textra, ensuring that accounting workflows can be processed efficiently and reliably while maintaining the highest standards of performance, security, and compliance. 

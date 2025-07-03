@@ -1,378 +1,608 @@
 ---
 title: "Conversation Models"
-description: "Data models for Textra's multi-conversation AI chat system with context management and agent integration"
+description: "MongoDB-based conversation system for multi-conversation AI chat with comprehensive message management and search capabilities"
 ---
 
-# Conversation Models
-
-The Conversation Models define the sophisticated data structures that power Textra's multi-conversation AI chat interface. These Pydantic-based models ensure data integrity, enable intelligent conversation management, and provide seamless integration between chat functionality and the accounting automation pipeline.
-
-## Core Model Architecture
-
-### Design Philosophy
-
-The conversation models are designed around several key principles:
-
-**Multi-Conversation Support**: Each user can maintain multiple simultaneous conversation threads without context interference
-**Context Preservation**: Rich context management that maintains conversation state and document relationships
-**Agent Integration**: Seamless integration with specialized AI agents for different accounting tasks
-**Scalability**: Efficient data structures that support thousands of concurrent conversations
-**Audit Trail**: Complete conversation history for compliance and analysis purposes
-
-### Data Persistence Strategy
-
-**MongoDB Integration**: Conversations are stored as documents with embedded message arrays for optimal performance
-**Referential Integrity**: Strong relationships between conversations, messages, and accounting documents
-**Indexing Strategy**: Optimized indexes for fast conversation retrieval and search operations
-**Archival Support**: Intelligent archiving of old conversations while maintaining accessibility
-
----
-
-## Core Conversation Models
-
-### Conversation Model
-
-The primary model representing a complete conversation thread with all its metadata and context.
-
-#### Essential Properties
-
-**Conversation Identity**:
-- **conversation_id**: Globally unique identifier for the conversation
-- **title**: User-friendly conversation title (auto-generated or user-defined)
-- **status**: Current conversation status (active, archived, completed, paused)
-- **conversation_type**: Type classification (invoice_analysis, general_chat, document_review, compliance_check)
-
-**Temporal Tracking**:
-- **created_at**: Timestamp of conversation creation
-- **updated_at**: Last modification timestamp
-- **last_activity**: Timestamp of last user or agent activity
-- **duration**: Total conversation duration in seconds
-
-**User Association**:
-- **user_id**: Owner of the conversation
-- **shared_with**: List of users with conversation access
-- **permission_level**: Access permissions for shared users
-
-#### Context Management
-
-**Document Context**:
-- **document_ids**: List of invoices, receipts, or other documents being discussed
-- **active_documents**: Currently focused documents in the conversation
-- **document_metadata**: Cached metadata for quick access to document information
-
-**Business Context**:
-- **company_context**: Company-specific information relevant to the conversation
-- **accounting_period**: Relevant accounting period for the discussion
-- **transaction_focus**: Specific transactions or financial events being analyzed
-
-**Conversation State**:
-- **current_topic**: Current discussion topic extracted from recent messages
-- **conversation_flow**: Structured representation of conversation progression
-- **pending_actions**: Actions that need to be completed based on conversation content
-
-#### Agent Configuration
-
-**Available Agents**:
-- **enabled_agents**: List of AI agents available for this conversation
-- **agent_preferences**: User preferences for agent behavior and response style
-- **routing_rules**: Custom rules for routing queries to specific agents
-
-**Agent History**:
-- **agent_usage_stats**: Statistics on which agents have been used most
-- **successful_interactions**: Count of successful agent interactions
-- **user_feedback**: User satisfaction ratings for agent responses
-
-### Message Model
-
-Represents individual messages within conversations, including both user messages and AI agent responses.
-
-#### Message Identity and Classification
-
-**Message Properties**:
-- **message_id**: Unique identifier for the message
-- **conversation_id**: Reference to parent conversation
-- **sender**: Message sender (user_id or agent_type)
-- **sender_type**: Classification (human, ai_agent, system)
-- **timestamp**: Exact message timestamp
-
-**Content Structure**:
-- **content**: Primary message content (text, formatted text, or structured data)
-- **content_type**: Type of content (text, markdown, json, structured_response)
-- **language**: Detected or specified language of the message
-- **formatting**: Rich formatting information for display
-
-#### Agent-Specific Metadata
-
-**AI Agent Messages**:
-- **agent_type**: Specific agent that generated the response (invoice_qa, calculation, retrieval, mongodb)
-- **processing_time**: Time taken to generate the response
-- **confidence_score**: Agent's confidence in the response accuracy
-- **reasoning_chain**: Step-by-step reasoning process used by the agent
-
-**Query Context**:
-- **query_parameters**: Extracted parameters from user queries
-- **referenced_documents**: Documents referenced in the message
-- **triggered_actions**: Actions triggered by the message (searches, calculations, etc.)
-- **follow_up_suggestions**: Suggested follow-up questions or actions
-
-#### Response Enhancement
-
-**Rich Content Support**:
-- **attachments**: File attachments or generated reports
-- **embedded_data**: Structured data embedded in responses (tables, charts)
-- **action_buttons**: Interactive elements for user actions
-- **quick_replies**: Suggested quick response options
-
-**User Experience Features**:
-- **read_status**: Whether the message has been read by recipients
-- **reaction_data**: User reactions or feedback on the message
-- **edit_history**: History of message edits (for user messages)
-- **translation_data**: Translations of the message in different languages
-
-### ConversationContext Model
-
-Manages the sophisticated context system that enables intelligent conversation flow and agent behavior.
-
-#### Document Context Management
-
-**Active Document Tracking**:
-- **primary_documents**: Main documents being discussed
-- **secondary_documents**: Related documents that provide context
-- **document_relationships**: Relationships between different documents
-- **access_permissions**: User permissions for each referenced document
-
-**Document State**:
-- **processing_status**: Current processing status of referenced documents
-- **last_accessed**: When each document was last accessed in conversation
-- **modification_tracking**: Changes to documents since conversation started
-- **version_tracking**: Document version information for consistency
-
-#### Conversation Memory
-
-**Short-Term Memory**:
-- **recent_topics**: Topics discussed in the last few messages
-- **active_queries**: Ongoing queries or investigations
-- **pending_clarifications**: Questions awaiting user clarification
-- **current_focus**: Current area of focus in the conversation
-
-**Long-Term Memory**:
-- **conversation_summary**: High-level summary of conversation content
-- **key_decisions**: Important decisions made during the conversation
-- **recurring_themes**: Topics that appear frequently in the conversation
-- **user_preferences**: Learned preferences about how the user likes information presented
-
-#### Business Intelligence Context
-
-**Analytical Context**:
-- **calculation_results**: Results from financial calculations performed
-- **trend_analysis**: Identified trends in the data being discussed
-- **compliance_status**: Compliance-related information relevant to the conversation
-- **risk_indicators**: Identified risks or issues requiring attention
-
-**Workflow Integration**:
-- **triggered_processes**: Accounting processes triggered from the conversation
-- **approval_requests**: Requests for approval generated from conversation
-- **export_requests**: Export operations initiated through conversation
-- **notification_settings**: Notification preferences for conversation events
-
----
-
-## Specialized Models
-
-### ConversationTemplate Model
-
-Defines reusable conversation templates for common accounting workflows.
-
-#### Template Structure
-
-**Template Definition**:
-- **template_id**: Unique identifier for the template
-- **template_name**: Human-readable template name
-- **description**: Detailed description of template purpose and use cases
-- **category**: Template category (monthly_review, compliance_check, vendor_analysis)
-
-**Initialization Parameters**:
-- **required_parameters**: Parameters that must be provided when using template
-- **optional_parameters**: Optional parameters for template customization
-- **default_values**: Default values for template parameters
-- **validation_rules**: Rules for validating template parameters
-
-#### Template Behavior
-
-**Conversation Flow**:
-- **initial_messages**: Pre-defined messages to start the conversation
-- **suggested_questions**: Common questions for this type of conversation
-- **workflow_steps**: Recommended steps for completing the conversation objective
-- **completion_criteria**: Criteria for determining when the conversation objective is met
-
-**Agent Configuration**:
-- **recommended_agents**: Agents most useful for this template type
-- **agent_priorities**: Priority order for agent routing
-- **specialized_prompts**: Template-specific prompts for better agent performance
-- **context_requirements**: Required context information for optimal performance
-
-### ConversationAnalytics Model
-
-Captures detailed analytics and performance metrics for conversations.
-
-#### Usage Analytics
-
-**Conversation Metrics**:
-- **message_count**: Total number of messages in conversation
-- **user_message_count**: Number of user messages
-- **agent_message_count**: Number of agent responses
-- **average_response_time**: Average time for agent responses
-
-**Engagement Metrics**:
-- **session_duration**: Total time spent in conversation
-- **active_time**: Time when user was actively engaged
-- **idle_periods**: Periods of inactivity during conversation
-- **return_frequency**: How often user returns to the conversation
-
-#### Performance Analytics
-
-**Agent Performance**:
-- **agent_usage_distribution**: How different agents were used
-- **agent_success_rates**: Success rates for different agent types
-- **user_satisfaction_scores**: User feedback on agent responses
-- **response_quality_metrics**: Automated quality assessment of responses
-
-**Query Analysis**:
-- **query_complexity**: Analysis of query complexity levels
-- **resolution_rates**: Percentage of queries successfully resolved
-- **escalation_frequency**: How often queries required human intervention
-- **topic_distribution**: Distribution of topics discussed
-
-#### Business Impact
-
-**Workflow Efficiency**:
-- **tasks_completed**: Number of accounting tasks completed through conversation
-- **time_savings**: Estimated time saved compared to manual processes
-- **error_reduction**: Reduction in errors compared to manual processes
-- **process_improvements**: Identified opportunities for process improvement
-
-**Document Interaction**:
-- **documents_accessed**: Number of documents accessed through conversation
-- **processing_triggered**: Number of processing operations initiated
-- **exports_generated**: Number of exports or reports generated
-- **compliance_checks**: Number of compliance validations performed
-
----
-
-## Model Relationships and Integration
-
-### Cross-Model Relationships
-
-#### Conversation-Document Links
-
-**Document References**:
-- **Direct References**: Explicit document IDs mentioned in conversations
-- **Implicit References**: Documents identified through context analysis
-- **Processing Relationships**: Documents processed as a result of conversation
-- **Export Relationships**: Documents exported based on conversation requests
-
-**Bidirectional Linking**:
-- **Document-to-Conversation**: Track which conversations discuss each document
-- **Conversation-to-Document**: Track all documents referenced in each conversation
-- **Temporal Relationships**: When documents were accessed relative to conversation flow
-- **Permission Inheritance**: How document permissions affect conversation access
-
-#### User-Conversation Relationships
-
-**Ownership Model**:
-- **Primary Owner**: User who created the conversation
-- **Shared Access**: Users granted access to view or participate
-- **Permission Levels**: Different levels of access (read, write, admin)
-- **Inheritance Rules**: How permissions are inherited and managed
-
-**Collaboration Features**:
-- **Multi-User Conversations**: Support for multiple users in same conversation
-- **Handoff Mechanisms**: Transferring conversation ownership
-- **Notification Systems**: Alerting users about conversation updates
-- **Privacy Controls**: Ensuring sensitive conversations remain private
-
-### Integration with Accounting Pipeline
-
-#### Process Integration
-
-**Workflow Triggers**:
-- **Processing Initiation**: Starting invoice processing from conversation
-- **Status Monitoring**: Tracking processing progress within conversation
-- **Result Delivery**: Delivering processing results back to conversation
-- **Error Handling**: Managing processing errors through conversation interface
-
-**Data Synchronization**:
-- **Real-Time Updates**: Keeping conversation context synchronized with processing pipeline
-- **State Management**: Managing conversation state during long-running processes
-- **Conflict Resolution**: Handling conflicts between conversation context and system state
-- **Recovery Mechanisms**: Recovering conversation state after system interruptions
-
----
-
-## Performance and Optimization
-
-### Scalability Features
-
-#### Efficient Data Structures
-
-**Memory Optimization**:
-- **Lazy Loading**: Load conversation details only when needed
-- **Message Pagination**: Efficient handling of conversations with many messages
-- **Context Compression**: Compress large context objects for storage efficiency
-- **Archive Management**: Automatic archiving of old conversations
-
-**Database Optimization**:
-- **Index Strategy**: Optimized indexes for common query patterns
-- **Aggregation Pipelines**: Efficient aggregation for analytics queries
-- **Sharding Strategy**: Horizontal scaling for large conversation volumes
-- **Caching Integration**: Redis caching for frequently accessed conversations
-
-#### Real-Time Performance
-
-**WebSocket Integration**:
-- **Message Streaming**: Real-time message delivery for active conversations
-- **Typing Indicators**: Real-time typing indicators for better user experience
-- **Presence Management**: Track user presence in conversations
-- **Connection Management**: Efficient WebSocket connection handling
-
-**Response Optimization**:
-- **Agent Response Streaming**: Stream long agent responses in chunks
-- **Predictive Loading**: Pre-load likely-needed conversation data
-- **Background Processing**: Process non-urgent updates in background
-- **Resource Pooling**: Efficient resource management for concurrent conversations
-
----
-
-## Security and Privacy
-
-### Data Protection
-
-#### Conversation Security
-
-**Access Control**:
-- **Role-Based Permissions**: Control access based on user roles
-- **Conversation-Level Security**: Granular security for individual conversations
-- **Content Filtering**: Filter sensitive information in conversations
-- **Audit Logging**: Complete audit trail of conversation access and modifications
-
-**Privacy Protection**:
-- **Data Encryption**: Encrypt sensitive conversation content
-- **Anonymization**: Remove or anonymize personal information when required
-- **Retention Policies**: Automatic deletion of conversations based on retention rules
-- **Export Controls**: Control what conversation data can be exported
-
-#### Compliance Integration
-
-**Regulatory Compliance**:
-- **GDPR Compliance**: Support for GDPR data protection requirements
-- **Right to Deletion**: Ability to completely delete user conversation data
-- **Data Portability**: Export conversation data in standard formats
-- **Consent Management**: Track and manage user consent for data processing
-
-**Audit Requirements**:
-- **Conversation Preservation**: Preserve conversations for required retention periods
-- **Immutable Records**: Ensure conversation records cannot be tampered with
-- **Access Tracking**: Track who accessed what conversation data when
-- **Compliance Reporting**: Generate reports for regulatory compliance
-
-The Conversation Models provide a robust foundation for intelligent, context-aware chat interactions that seamlessly integrate with accounting workflows while maintaining the performance, security, and compliance standards required for enterprise financial applications. 
+The Conversation Models provide a comprehensive MongoDB-based system for managing multi-conversation AI chat sessions. These models support user-scoped conversations, message persistence, conversation archiving, full-text search, and file attachment tracking with optimized database operations.
+
+## Core Data Models
+
+### Message
+
+```python
+class Message(BaseModel):
+    """Individual chat message model."""
+    id: str = Field(default_factory=lambda: str(ObjectId()))
+    role: str  # 'user' or 'assistant'
+    content: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+```
+
+**Individual Message Structure:**
+
+**Message Roles:**
+- **user**: Messages from human users
+- **assistant**: AI-generated responses from Agno agents
+
+**Message Properties:**
+- `id`: Unique ObjectId-based message identifier
+- `role`: Distinguishes between user input and AI responses
+- `content`: Complete message text content
+- `timestamp`: UTC timestamp for chronological ordering
+- **JSON Serialization**: Automatic datetime conversion for API responses
+
+**Message Example:**
+```json
+{
+  "id": "65a1b2c3d4e5f6789",
+  "role": "user",
+  "content": "Process this invoice and generate the journal entries",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+### Conversation
+
+```python
+class Conversation(BaseModel):
+    """Conversation model for MongoDB storage."""
+    id: str = Field(default_factory=lambda: str(ObjectId()))
+    user_id: str
+    title: str
+    messages: List[Message] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_archived: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    file_paths: Optional[List[str]] = Field(default_factory=list, description="Paths to files associated with this conversation")
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+```
+
+**Complete Conversation Structure:**
+
+**Core Properties:**
+- `id`: Unique conversation identifier (MongoDB ObjectId)
+- `user_id`: User scope for multi-tenant isolation
+- `title`: Human-readable conversation title
+- `messages`: Embedded message array for full conversation history
+- `created_at/updated_at`: Conversation lifecycle timestamps
+- `is_archived`: Soft deletion for conversation management
+- `metadata`: Extensible metadata storage for custom properties
+- `file_paths`: File attachments associated with the conversation
+
+**Conversation Example:**
+```json
+{
+  "id": "65a1b2c3d4e5f6789",
+  "user_id": "user123",
+  "title": "Invoice Processing Discussion",
+  "messages": [
+    {
+      "id": "65a1b2c3d4e5f678a",
+      "role": "user",
+      "content": "Process this invoice",
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": "65a1b2c3d4e5f678b", 
+      "role": "assistant",
+      "content": "I'll process your invoice through the 5-phase pipeline...",
+      "timestamp": "2024-01-15T10:30:15Z"
+    }
+  ],
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:32:00Z",
+  "is_archived": false,
+  "metadata": {
+    "processing_type": "invoice_automation",
+    "file_count": 2
+  },
+  "file_paths": [
+    "/uploads/invoice_001.pdf",
+    "/uploads/receipt_002.jpg"
+  ]
+}
+```
+
+## Database Management
+
+### ConversationStore
+
+```python
+class ConversationStore:
+    """MongoDB store for conversations and messages."""
+    
+    def __init__(
+        self,
+        db_url: str = "mongodb://localhost:27017",
+        db_name: str = "textra_chat",
+        conversations_collection: str = "conversations"
+    ):
+        self.client = MongoClient(db_url)
+        self.db: Database = self.client[db_name]
+        self.conversations: Collection = self.db[conversations_collection]
+        self._create_indexes()
+```
+
+**MongoDB Configuration:**
+- **Database**: `textra_chat` for conversation storage
+- **Collection**: `conversations` for all conversation documents
+- **Connection Management**: Automatic connection pooling and retry logic
+- **Index Optimization**: Performance-optimized database indexes
+
+### Database Indexes
+
+```python
+def _create_indexes(self):
+    """Create necessary indexes for optimal performance."""
+    try:
+        # Indexes for conversations collection
+        self.conversations.create_index([("user_id", 1), ("created_at", -1)])
+        self.conversations.create_index([("user_id", 1), ("is_archived", 1)])
+        self.conversations.create_index("updated_at", background=True)
+        self.conversations.create_index("title", background=True)
+        # Text index for conversation search
+        self.conversations.create_index([
+            ("title", "text"),
+            ("messages.content", "text")
+        ], background=True)
+    except Exception as e:
+        print(f"Warning: Could not create indexes: {e}")
+```
+
+**Performance Optimization:**
+- **User Scoping**: Compound index for user_id + created_at (most common query)
+- **Archive Status**: Optimized filtering of archived conversations
+- **Temporal Sorting**: Background index for conversation ordering
+- **Title Search**: Fast conversation lookup by title
+- **Full-Text Search**: Text index across titles and message content
+- **Background Creation**: Non-blocking index creation during startup
+
+## Conversation Management Operations
+
+### Creating Conversations
+
+```python
+def create_conversation(self, user_id: str, title: str = "New Chat") -> str:
+    """Create a new conversation and return its ID."""
+    conversation_data = {
+        "user_id": user_id,
+        "title": title,
+        "messages": [],
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+        "is_archived": False,
+        "metadata": {},
+        "file_paths": []
+    }
+    
+    result = self.conversations.insert_one(conversation_data)
+    return str(result.inserted_id)
+```
+
+**Conversation Creation Features:**
+- **User Scoping**: Every conversation is tied to a specific user
+- **Default Title**: Auto-generates "New Chat" if no title provided
+- **Empty State**: Starts with empty message array and metadata
+- **UTC Timestamps**: Consistent timezone handling
+- **ObjectId Return**: Returns string representation of MongoDB ObjectId
+
+### Retrieving Conversations
+
+```python
+def get_conversation(self, conversation_id: str, user_id: str) -> Optional[Conversation]:
+    """Get a specific conversation by ID."""
+    try:
+        doc = self.conversations.find_one({
+            "_id": ObjectId(conversation_id),
+            "user_id": user_id
+        })
+        
+        if doc:
+            # Convert MongoDB document to Conversation model
+            doc["id"] = str(doc["_id"])
+            del doc["_id"]
+            return Conversation(**doc)
+        return None
+    except Exception as e:
+        print(f"Error getting conversation {conversation_id}: {e}")
+        return None
+```
+
+**Secure Conversation Access:**
+- **User Isolation**: Always validates user_id to prevent cross-user access
+- **ObjectId Conversion**: Handles MongoDB ObjectId to string conversion
+- **Pydantic Validation**: Returns validated Conversation model
+- **Error Handling**: Graceful handling of invalid ObjectIds or missing conversations
+- **None Return**: Clear indication when conversation not found
+
+### Listing User Conversations
+
+```python
+def list_conversations(
+    self,
+    user_id: str,
+    include_archived: bool = False,
+    limit: int = 50,
+    offset: int = 0
+) -> List[Conversation]:
+    """List conversations for a user."""
+    query = {"user_id": user_id}
+    if not include_archived:
+        query["is_archived"] = {"$ne": True}
+    
+    cursor = self.conversations.find(query).sort("updated_at", -1).skip(offset).limit(limit)
+    
+    conversations = []
+    for doc in cursor:
+        doc["id"] = str(doc["_id"])
+        del doc["_id"]
+        conversations.append(Conversation(**doc))
+    
+    return conversations
+```
+
+**Paginated Conversation Listing:**
+- **User Scoping**: Only returns conversations for specified user
+- **Archive Filtering**: Option to include/exclude archived conversations
+- **Chronological Ordering**: Sorts by last update (most recent first)
+- **Pagination Support**: Offset/limit for handling large conversation lists
+- **Batch Processing**: Efficient cursor-based iteration
+- **Model Validation**: Returns validated Conversation objects
+
+## Message Management
+
+### Adding Messages
+
+```python
+def add_message(
+    self,
+    conversation_id: str,
+    user_id: str,
+    role: str,
+    content: str
+) -> Optional[str]:
+    """Add a message to a conversation."""
+    try:
+        # Create message data without pre-generating ID
+        message_id = str(ObjectId())
+        message_data = {
+            "id": message_id,
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now(timezone.utc)
+        }
+        
+        result = self.conversations.update_one(
+            {"_id": ObjectId(conversation_id), "user_id": user_id},
+            {
+                "$push": {"messages": message_data},
+                "$set": {"updated_at": datetime.now(timezone.utc)}
+            }
+        )
+        
+        if result.modified_count > 0:
+            return message_id
+        return None
+    except Exception as e:
+        print(f"Error adding message: {e}")
+        return None
+```
+
+**Atomic Message Addition:**
+- **Security**: Validates user ownership before adding messages
+- **Atomic Operation**: Single database operation for message and timestamp update
+- **Unique IDs**: Generates unique ObjectId for each message
+- **Timestamp Consistency**: UTC timestamps for all messages
+- **Conversation Update**: Updates conversation's last modified time
+- **Return Value**: Returns message ID for client tracking
+
+### Message Pagination
+
+```python
+def get_conversation_messages(
+    self,
+    conversation_id: str,
+    user_id: str,
+    limit: int = 50,
+    before_message_id: Optional[str] = None
+) -> List[Message]:
+    """Get messages for a conversation with pagination."""
+    try:
+        pipeline = [
+            {"$match": {"_id": ObjectId(conversation_id), "user_id": user_id}},
+            {"$unwind": "$messages"},
+            {"$sort": {"messages.timestamp": -1}}
+        ]
+        
+        if before_message_id:
+            # Add filter for pagination
+            pipeline.append({
+                "$match": {"messages.id": {"$lt": before_message_id}}
+            })
+        
+        pipeline.append({"$limit": limit})
+        pipeline.append({"$sort": {"messages.timestamp": 1}})  # Return in chronological order
+        
+        results = list(self.conversations.aggregate(pipeline))
+        messages = []
+        
+        for result in results:
+            message_data = result["messages"]
+            messages.append(Message(**message_data))
+        
+        return messages
+    except Exception as e:
+        print(f"Error getting messages: {e}")
+        return []
+```
+
+**Advanced Message Pagination:**
+- **Aggregation Pipeline**: Efficient MongoDB aggregation for large conversations
+- **Cursor-Based Pagination**: Uses message IDs for consistent pagination
+- **Security Validation**: Ensures user has access to conversation
+- **Chronological Return**: Returns messages in proper time order
+- **Performance Optimization**: Limits results to prevent memory issues
+- **Error Resilience**: Returns empty list on errors rather than crashing
+
+## Conversation Lifecycle Management
+
+### Title Management
+
+```python
+def update_conversation_title(self, conversation_id: str, user_id: str, title: str) -> bool:
+    """Update conversation title."""
+    try:
+        result = self.conversations.update_one(
+            {"_id": ObjectId(conversation_id), "user_id": user_id},
+            {
+                "$set": {
+                    "title": title,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        return result.modified_count > 0
+    except Exception as e:
+        print(f"Error updating conversation title: {e}")
+        return False
+```
+
+### Automatic Title Generation
+
+```python
+def auto_title_conversation(self, conversation_id: str, user_id: str) -> Optional[str]:
+    """Generate an automatic title based on the first few messages."""
+    try:
+        conversation = self.get_conversation(conversation_id, user_id)
+        if not conversation or len(conversation.messages) < 2:
+            return None
+        
+        # Get first user message for title generation
+        first_user_message = None
+        for msg in conversation.messages:
+            if msg.role == "user":
+                first_user_message = msg
+                break
+        
+        if first_user_message:
+            # Simple title generation - take first 50 chars of user message
+            title = first_user_message.content.strip()
+            if len(title) > 50:
+                title = title[:47] + "..."
+            
+            # Update the title
+            if self.update_conversation_title(conversation_id, user_id, title):
+                return title
+        
+        return None
+    except Exception as e:
+        print(f"Error auto-titling conversation: {e}")
+        return None
+```
+
+**Smart Title Generation:**
+- **Content-Based**: Generates titles from first user message
+- **Length Limits**: Truncates to 50 characters with ellipsis
+- **User Message Priority**: Uses user input rather than AI responses
+- **Validation**: Requires minimum conversation length before generation
+- **Automatic Update**: Updates conversation title if generation succeeds
+
+### Archive Management
+
+```python
+def archive_conversation(self, conversation_id: str, user_id: str) -> bool:
+    """Archive a conversation."""
+    try:
+        result = self.conversations.update_one(
+            {"_id": ObjectId(conversation_id), "user_id": user_id},
+            {
+                "$set": {
+                    "is_archived": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        return result.modified_count > 0
+    except Exception as e:
+        print(f"Error archiving conversation: {e}")
+        return False
+
+def unarchive_conversation(self, conversation_id: str, user_id: str) -> bool:
+    """Unarchive a conversation."""
+    try:
+        result = self.conversations.update_one(
+            {"_id": ObjectId(conversation_id), "user_id": user_id},
+            {
+                "$set": {
+                    "is_archived": False,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        return result.modified_count > 0
+    except Exception as e:
+        print(f"Error unarchiving conversation: {e}")
+        return False
+```
+
+**Soft Delete Architecture:**
+- **Archive State**: Uses `is_archived` flag for soft deletion
+- **Reversible**: Conversations can be unarchived if needed
+- **Data Preservation**: Maintains all conversation data and messages
+- **Timestamp Updates**: Updates modification time on status changes
+- **User Security**: Always validates user ownership
+
+### Permanent Deletion
+
+```python
+def delete_conversation(self, conversation_id: str, user_id: str) -> bool:
+    """Delete a conversation."""
+    try:
+        result = self.conversations.delete_one({
+            "_id": ObjectId(conversation_id),
+            "user_id": user_id
+        })
+        return result.deleted_count > 0
+    except Exception as e:
+        print(f"Error deleting conversation: {e}")
+        return False
+```
+
+**Permanent Conversation Removal:**
+- **Hard Delete**: Permanently removes conversation and all messages
+- **Security Validation**: Requires user ownership verification
+- **Irreversible**: No recovery possible after deletion
+- **Clean Removal**: Removes all associated data and files
+
+## Search and Discovery
+
+### Full-Text Search
+
+```python
+def search_conversations(
+    self,
+    user_id: str,
+    query: str,
+    limit: int = 20,
+    offset: int = 0
+) -> List[Conversation]:
+    """Search conversations by title and message content."""
+    try:
+        search_query = {
+            "user_id": user_id,
+            "$text": {"$search": query}
+        }
+        
+        cursor = self.conversations.find(search_query).sort([
+            ("score", {"$meta": "textScore"}),
+            ("updated_at", -1)
+        ]).skip(offset).limit(limit)
+        
+        conversations = []
+        for doc in cursor:
+            doc["id"] = str(doc["_id"])
+            del doc["_id"]
+            conversations.append(Conversation(**doc))
+        
+        return conversations
+    except Exception as e:
+        print(f"Error searching conversations: {e}")
+        return []
+```
+
+**Advanced Search Features:**
+- **Full-Text Index**: Searches across conversation titles and all message content
+- **Relevance Scoring**: Uses MongoDB text search scoring for result ranking
+- **User Scoping**: Only searches within user's conversations
+- **Fallback Ordering**: Secondary sort by update time for consistent results
+- **Pagination Support**: Handles large search result sets efficiently
+- **Error Resilience**: Returns empty results rather than failing
+
+## Connection Management
+
+### Resource Cleanup
+
+```python
+def close(self):
+    """Close MongoDB connection."""
+    if self.client:
+        self.client.close()
+```
+
+**Proper Resource Management:**
+- **Connection Closing**: Explicitly closes MongoDB connections
+- **Memory Cleanup**: Prevents connection leaks in long-running applications
+- **Safe Shutdown**: Handles graceful application shutdown
+
+## Usage Patterns
+
+### Basic Conversation Flow
+
+```python
+# Initialize conversation store
+store = ConversationStore(
+    db_url="mongodb://localhost:27017",
+    db_name="textra_chat"
+)
+
+# Create new conversation
+conversation_id = store.create_conversation(
+    user_id="user123",
+    title="Invoice Processing Chat"
+)
+
+# Add user message
+message_id = store.add_message(
+    conversation_id=conversation_id,
+    user_id="user123",
+    role="user",
+    content="Process my invoice please"
+)
+
+# Add AI response
+response_id = store.add_message(
+    conversation_id=conversation_id,
+    user_id="user123", 
+    role="assistant",
+    content="I'll process your invoice through our 5-phase pipeline..."
+)
+
+# Auto-generate title
+title = store.auto_title_conversation(conversation_id, "user123")
+```
+
+### Conversation Management
+
+```python
+# List user conversations
+conversations = store.list_conversations(
+    user_id="user123",
+    include_archived=False,
+    limit=20
+)
+
+# Search conversations
+search_results = store.search_conversations(
+    user_id="user123",
+    query="invoice processing",
+    limit=10
+)
+
+# Archive old conversation
+store.archive_conversation(conversation_id, "user123")
+
+# Clean up
+store.close()
+```
+
+The Conversation Models provide a robust foundation for managing multi-user AI conversations with comprehensive message handling, search capabilities, and efficient MongoDB operations optimized for the Textra accounting automation platform. 

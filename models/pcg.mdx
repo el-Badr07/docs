@@ -1,0 +1,390 @@
+---
+title: "PCG Models"
+description: "Pydantic models for French Plan Comptable Général (PCG) data structures and operations"
+---
+
+The PCG Models provide structured data access to the French Plan Comptable Général (General Chart of Accounts), enabling accurate account mapping and compliance with French accounting standards. These models support the 8000+ accounts in the PCG hierarchy with intelligent search and validation capabilities.
+
+## Core PCG Structure
+
+### PCGAccount
+
+```python
+class PCGAccount(BaseModel):
+    numero: str = Field(..., description="Account number")
+    intitule: str = Field(..., description="Account title")
+    numero_compte_parent: Optional[str] = Field(None, description="Parent account number")
+    type: str = Field(..., description="Account type")
+    nature_augmentation: str = Field(..., description="Debit or Credit for increase")
+    est_compte_detaille: bool = Field(..., description="Whether this is a detailed account")
+    description: str = Field(..., description="Account description")
+```
+
+**Account Structure Example:**
+```json
+{
+  "numero": "401000",
+  "intitule": "Fournisseurs",
+  "numero_compte_parent": "40",
+  "type": "Passif",
+  "nature_augmentation": "Credit",
+  "est_compte_detaille": true,
+  "description": "Comptes des fournisseurs d'exploitation"
+}
+```
+
+**Key Properties:**
+- **numero**: Unique account identifier (e.g., "401000", "606100")
+- **intitule**: French account title as per PCG standards
+- **numero_compte_parent**: Hierarchical relationship to parent accounts
+- **type**: Account category (Actif, Passif, Charge, Produit)
+- **nature_augmentation**: Whether account increases with Debit or Credit
+- **est_compte_detaille**: Indicates if account can be used for direct posting
+
+### PCGClass
+
+```python
+class PCGClass(BaseModel):
+    numero_classe: str = Field(..., description="Class number")
+    titre_classe: str = Field(..., description="Class title")
+    description: str = Field(..., description="Class description")
+    comptes: List[PCGAccount] = Field(..., description="Accounts in this class")
+```
+
+**The 8 PCG Classes:**
+
+1. **Class 1**: Comptes de capitaux (Capital accounts)
+2. **Class 2**: Comptes d'immobilisations (Fixed asset accounts)
+3. **Class 3**: Comptes de stocks et en-cours (Inventory and work-in-progress)
+4. **Class 4**: Comptes de tiers (Third-party accounts)
+5. **Class 5**: Comptes financiers (Financial accounts)
+6. **Class 6**: Comptes de charges (Expense accounts)
+7. **Class 7**: Comptes de produits (Revenue accounts)
+8. **Class 8**: Comptes spéciaux (Special accounts)
+
+**Class Structure Example:**
+```json
+{
+  "numero_classe": "4",
+  "titre_classe": "Comptes de tiers",
+  "description": "Comptes relatifs aux tiers (fournisseurs, clients, organismes sociaux, État, etc.)",
+  "comptes": [
+    {
+      "numero": "401000",
+      "intitule": "Fournisseurs",
+      ...
+    },
+    {
+      "numero": "411000", 
+      "intitule": "Clients",
+      ...
+    }
+  ]
+}
+```
+
+## PCG Data Container
+
+### PCGData
+
+```python
+class PCGData(BaseModel):
+    classes: List[PCGClass] = Field(..., description="All PCG classes")
+```
+
+The main container for the complete PCG structure with powerful query methods.
+
+## Query Methods
+
+### Account Lookup
+
+```python
+def get_account_by_number(self, account_number: str) -> Optional[PCGAccount]:
+    """Get account by its number."""
+```
+
+**Usage Example:**
+```python
+pcg = PCGData(classes=classes_data)
+
+# Find specific account
+account = pcg.get_account_by_number("401000")
+if account:
+    print(f"Account: {account.numero} - {account.intitule}")
+    # Output: Account: 401000 - Fournisseurs
+```
+
+### Class-Based Queries
+
+```python
+def get_accounts_by_class(self, class_number: str) -> List[PCGAccount]:
+    """Get all accounts in a specific class."""
+```
+
+**Usage Example:**
+```python
+# Get all supplier/customer accounts (Class 4)
+tier_accounts = pcg.get_accounts_by_class("4")
+
+# Get all expense accounts (Class 6)
+expense_accounts = pcg.get_accounts_by_class("6")
+
+# Get all revenue accounts (Class 7)
+revenue_accounts = pcg.get_accounts_by_class("7")
+```
+
+### Hierarchical Queries
+
+```python
+def get_accounts_by_parent(self, parent_number: str) -> List[PCGAccount]:
+    """Get all child accounts of a parent account."""
+```
+
+**Usage Example:**
+```python
+# Get all detailed supplier accounts under 401
+supplier_details = pcg.get_accounts_by_parent("401")
+
+# Get all VAT accounts under 445
+vat_accounts = pcg.get_accounts_by_parent("445")
+```
+
+### Prefix Search
+
+```python
+def search_accounts_by_prefix(self, prefix: str) -> List[PCGAccount]:
+    """Get all accounts starting with a prefix."""
+```
+
+**Usage Example:**
+```python
+# Find all accounts starting with "606" (Purchase accounts)
+purchase_accounts = pcg.search_accounts_by_prefix("606")
+
+# Find all accounts starting with "445" (VAT accounts)
+vat_accounts = pcg.search_accounts_by_prefix("445")
+```
+
+### Detailed Account Filtering
+
+```python
+def get_detailed_accounts_by_class(self, class_number: str) -> List[PCGAccount]:
+    """Get only detailed accounts in a specific class."""
+```
+
+**Usage Example:**
+```python
+# Get only postable accounts in class 6 (detailed expense accounts)
+postable_expenses = pcg.get_detailed_accounts_by_class("6")
+
+# Filter for accounts that can be used in journal entries
+for account in postable_expenses:
+    if account.est_compte_detaille:
+        print(f"Postable: {account.numero} - {account.intitule}")
+```
+
+## Account Classification Examples
+
+### Supplier Accounts (Class 4)
+
+```python
+# Major supplier account categories
+supplier_accounts = {
+    "401000": "Fournisseurs",
+    "401001": "Fournisseurs - Achats de marchandises", 
+    "401002": "Fournisseurs - Achats de matières premières",
+    "401003": "Fournisseurs - Prestations de services",
+    "403000": "Fournisseurs - Effets à payer",
+    "404000": "Fournisseurs d'immobilisations",
+    "408000": "Fournisseurs - Factures non parvenues"
+}
+```
+
+### Customer Accounts (Class 4)
+
+```python
+# Major customer account categories  
+customer_accounts = {
+    "411000": "Clients",
+    "411001": "Clients - Ventes de marchandises",
+    "411002": "Clients - Prestations de services", 
+    "413000": "Clients - Effets à recevoir",
+    "416000": "Clients douteux ou litigieux",
+    "418000": "Clients - Produits non encore facturés"
+}
+```
+
+### VAT Accounts (Class 4)
+
+```python
+# VAT account structure
+vat_accounts = {
+    "445620": "TVA déductible sur immobilisations",
+    "445660": "TVA déductible sur autres biens et services", 
+    "445710": "TVA collectée",
+    "445711": "TVA collectée sur prestations de services",
+    "445712": "TVA collectée sur livraisons à soi-même"
+}
+```
+
+### Expense Accounts (Class 6)
+
+```python
+# Common expense account categories
+expense_accounts = {
+    "606100": "Achats stockés - Matières premières",
+    "606200": "Achats stockés - Autres approvisionnements",
+    "607000": "Achats de marchandises",
+    "613000": "Locations",
+    "614000": "Charges locatives et de copropriété",
+    "615000": "Entretien et réparations",
+    "616000": "Primes d'assurances"
+}
+```
+
+## Account Validation Patterns
+
+### Account Number Validation
+
+```python
+def is_valid_account_number(pcg: PCGData, account_number: str) -> bool:
+    """Validate if account number exists in PCG."""
+    return pcg.get_account_by_number(account_number) is not None
+
+def is_postable_account(pcg: PCGData, account_number: str) -> bool:
+    """Check if account can be used for direct posting."""
+    account = pcg.get_account_by_number(account_number)
+    return account is not None and account.est_compte_detaille
+```
+
+### Account Type Classification
+
+```python
+def get_account_nature(pcg: PCGData, account_number: str) -> Optional[str]:
+    """Get the debit/credit nature of an account."""
+    account = pcg.get_account_by_number(account_number)
+    return account.nature_augmentation if account else None
+
+def is_balance_sheet_account(account_number: str) -> bool:
+    """Check if account appears on balance sheet."""
+    return account_number.startswith(('1', '2', '3', '4', '5'))
+
+def is_income_statement_account(account_number: str) -> bool:
+    """Check if account appears on income statement.""" 
+    return account_number.startswith(('6', '7'))
+```
+
+## Integration with Accounting Pipeline
+
+### Account Mapping Support
+
+```python
+def find_best_expense_account(pcg: PCGData, description: str) -> Optional[PCGAccount]:
+    """Find best matching expense account for description."""
+    # Search Class 6 accounts for keyword matches
+    expense_accounts = pcg.get_accounts_by_class("6")
+    
+    for account in expense_accounts:
+        if account.est_compte_detaille:
+            # Match keywords in description
+            if any(keyword in description.lower() 
+                   for keyword in account.intitule.lower().split()):
+                return account
+    
+    return None
+
+def get_vat_account_for_rate(pcg: PCGData, vat_rate: float, is_deductible: bool) -> Optional[PCGAccount]:
+    """Get appropriate VAT account for given rate and type."""
+    if is_deductible:
+        # TVA déductible accounts (4456x)
+        if vat_rate == 20.0:
+            return pcg.get_account_by_number("445660")  # TVA déductible 20%
+        elif vat_rate == 10.0:
+            return pcg.get_account_by_number("445662")  # TVA déductible 10%
+    else:
+        # TVA collectée accounts (4457x)
+        if vat_rate == 20.0:
+            return pcg.get_account_by_number("445710")  # TVA collectée 20%
+        elif vat_rate == 10.0:
+            return pcg.get_account_by_number("445712")  # TVA collectée 10%
+    
+    return None
+```
+
+### Supplier/Customer Account Generation
+
+```python
+def generate_supplier_account(pcg: PCGData, supplier_name: str) -> str:
+    """Generate specific supplier account number."""
+    # Base supplier account
+    base_account = "401"
+    
+    # Generate unique suffix based on supplier name
+    # In practice, this would use more sophisticated logic
+    supplier_code = supplier_name.upper()[:4].replace(" ", "")
+    
+    return f"{base_account}{supplier_code}"
+
+def generate_customer_account(pcg: PCGData, customer_name: str) -> str:
+    """Generate specific customer account number."""
+    # Base customer account
+    base_account = "411"
+    
+    # Generate unique suffix based on customer name
+    customer_code = customer_name.upper()[:4].replace(" ", "")
+    
+    return f"{base_account}{customer_code}"
+```
+
+## Usage in Accounting Automation
+
+### Journal Entry Account Validation
+
+```python
+def validate_journal_entry_accounts(pcg: PCGData, entry_lines: List[Dict]) -> List[str]:
+    """Validate all accounts in journal entry lines."""
+    errors = []
+    
+    for line in entry_lines:
+        account_number = line.get("account_number")
+        if not account_number:
+            errors.append("Missing account number")
+            continue
+            
+        account = pcg.get_account_by_number(account_number)
+        if not account:
+            errors.append(f"Invalid account number: {account_number}")
+            continue
+            
+        if not account.est_compte_detaille:
+            errors.append(f"Account {account_number} is not postable")
+    
+    return errors
+```
+
+### Account Search and Suggestions
+
+```python
+def suggest_accounts(pcg: PCGData, search_term: str, account_class: str = None) -> List[PCGAccount]:
+    """Suggest accounts based on search term and optional class filter."""
+    suggestions = []
+    
+    # Get accounts from specific class or all classes
+    if account_class:
+        accounts = pcg.get_accounts_by_class(account_class)
+    else:
+        accounts = []
+        for classe in pcg.classes:
+            accounts.extend(classe.comptes)
+    
+    # Search in account titles and descriptions
+    search_lower = search_term.lower()
+    for account in accounts:
+        if (search_lower in account.intitule.lower() or 
+            search_lower in account.description.lower()):
+            suggestions.append(account)
+    
+    return suggestions[:10]  # Limit results
+```
+
+The PCG Models provide comprehensive support for French accounting standards, enabling accurate account mapping, validation, and compliance throughout Textra's accounting automation pipeline. 

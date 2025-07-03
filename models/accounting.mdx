@@ -1,291 +1,505 @@
 ---
 title: "Accounting Models"
-description: "Comprehensive data models powering the accounting automation pipeline with French PCG compliance"
+description: "Pydantic models for the accounting automation pipeline with French PCG compliance and comprehensive financial data structures"
 ---
 
-# Accounting Models
+The Accounting Models define the core data structures for Textra's accounting automation system, providing sophisticated Pydantic-based models that ensure data integrity, validation, and seamless integration throughout the 5-phase processing pipeline. These models are designed with French accounting standards (PCG) compliance while supporting comprehensive financial document processing.
 
-The Accounting Models form the backbone of Textra's accounting automation system, providing sophisticated Pydantic-based data structures that ensure data integrity, validation, and seamless integration throughout the 5-phase processing pipeline. These models are designed with French accounting standards (PCG) in mind while maintaining flexibility for international use.
+## Core Enumerations
 
-## Model Architecture Philosophy
+### InvoiceType
 
-### Type Safety and Validation
+```python
+class InvoiceType(str, Enum):
+    PURCHASE = "purchase"
+    SALE = "sale"
+    UNKNOWN = "unknown"
+```
 
-All accounting models are built using **Pydantic**, providing:
+**Invoice Classification:**
+- **PURCHASE**: Purchase invoices (factures d'achat) from suppliers
+- **SALE**: Sales invoices (factures de vente) to customers  
+- **UNKNOWN**: Unclassified invoices requiring manual review
 
-**Runtime Validation**: Every piece of data is validated as it enters the system, preventing invalid data from propagating through the pipeline
-**Type Safety**: Strong typing ensures that financial amounts are always numbers, dates are properly formatted, and enums contain only valid values
-**Automatic Serialization**: Seamless conversion between Python objects, JSON, and database storage formats
-**Documentation Integration**: Models serve as living documentation of the data structures
+### ProcessingStatus
 
-### Business Logic Integration
+```python
+class ProcessingStatus(str, Enum):
+    PENDING = "pending"
+    EXTRACTING = "extracting"
+    EXTRACTED = "extracted"
+    IMPUTING = "imputing"
+    IMPUTED = "imputed"
+    GENERATING = "generating"
+    GENERATED = "generated"
+    EXPORTING = "exporting"
+    EXPORTED = "exported"
+    COMPLETED = "completed"
+    FAILED = "failed"
+```
 
-The models don't just store data—they embed **business logic** directly into the data structures:
+**Pipeline Status Tracking:**
+- Comprehensive status tracking through all 5 phases
+- Real-time progress monitoring
+- Error state handling and recovery
 
-**Validation Rules**: French VAT rates, PCG account number formats, and invoice number patterns are validated automatically
-**Calculation Methods**: Models include methods for calculating totals, validating balances, and generating derived values
-**Compliance Checks**: Built-in validation for French accounting standards and regulatory requirements
-**Confidence Scoring**: Sophisticated algorithms for assessing data quality and extraction confidence
+### DocumentType
 
----
+```python
+class DocumentType(str, Enum):
+    INVOICE = "invoice"
+    PURCHASE_INVOICE = "purchase_invoice"
+    SALE_INVOICE = "sale_invoice"
+    BANK_STATEMENT = "bank_statement"
+    PAYROLL_DOCUMENT = "payroll_document"
+    EXPENSE_RECEIPT = "expense_receipt"
+    CONTRACT = "contract"
+    PURCHASE_ORDER = "purchase_order"
+    DELIVERY_NOTE = "delivery_note"
+    CREDIT_NOTE = "credit_note"
+    DEBIT_NOTE = "debit_note"
+    PAYMENT_VOUCHER = "payment_voucher"
+    TAX_DOCUMENT = "tax_document"
+    CASH_RECEIPT = "cash_receipt"
+    GOVERNMENT_DOCUMENT = "government_document"
+    SUPPLIER_STATEMENT = "supplier_statement"
+    CUSTOMER_PAYMENT = "customer_payment"
+    LOAN_DOCUMENT = "loan_document"
+    INSURANCE_DOCUMENT = "insurance_document"
+    UTILITY_BILL = "utility_bill"
+    GENERIC_DOCUMENT = "generic_document"
+    OTHER = "other"
+```
+
+**Comprehensive Document Support:**
+- Core invoice types for standard processing
+- Extended financial document types for complete accounting coverage
+- Specialized document types for different business workflows
 
 ## Core Data Models
 
-### ExtractedInvoice - The Foundation Model
+### ExtractedInvoice
 
-This model represents the complete structured data extracted from an invoice document during Phase 1 of the pipeline.
+```python
+class ExtractedInvoice(BaseModel):
+    invoice_id: str = Field(..., description="Unique invoice identifier")
+    file_path: str = Field(..., description="Path to original invoice file")
+    
+    # Invoice classification
+    invoice_type: InvoiceType = Field(..., description="Purchase or sale invoice")
+    
+    # Basic invoice metadata
+    invoice_number: str = Field(..., description="Invoice number")
+    invoice_date: str = Field(..., description="Invoice date (YYYY-MM-DD)")
+    due_date: Optional[str] = Field(None, description="Payment due date (YYYY-MM-DD)")
+    
+    # Parties information
+    vendor_name: Optional[str] = Field(None, description="Vendor name for purchases")
+    vendor_address: Optional[str] = Field(None, description="Vendor address")
+    customer_name: Optional[str] = Field(None, description="Customer name for sales")
+    customer_address: Optional[str] = Field(None, description="Customer address")
+    
+    # Financial totals
+    total_amount_ht: float = Field(..., ge=0, description="Total amount excluding VAT")
+    total_amount_ttc: float = Field(..., ge=0, description="Total amount including VAT")
+    currency: str = Field(default="EUR", description="Currency code")
+    
+    # VAT information
+    vat_details: List[VATDetail] = Field(default_factory=list, description="VAT breakdown by rate")
+    
+    # Line items
+    line_items: List[LineItem] = Field(default_factory=list, description="Individual line items")
+    
+    # Payment Status Information (Manual Entry - Phase 2 Feature)
+    payment_status: Optional[str] = Field(None, description="Payment status: unpaid, paid, partially_paid, overdue")
+    payment_method: Optional[str] = Field(None, description="Payment method: bank_transfer, check, cash, credit_card, direct_debit")
+    payment_date: Optional[str] = Field(None, description="Payment date (YYYY-MM-DD)")
+    paid_amount: Optional[float] = Field(None, ge=0, description="Amount paid (for partial payments)")
+    payment_reference: Optional[str] = Field(None, description="Payment reference/transaction ID")
+    payment_notes: Optional[str] = Field(None, description="Additional payment notes")
+    
+    # Financial Journal Entry (Generated after payment info)
+    financial_journal_entry: Optional[Dict[str, Any]] = Field(None, description="Financial journal entry for payment")
+    
+    # Processing metadata
+    extraction_confidence: float = Field(..., ge=0, le=1, description="Overall extraction confidence")
+    extracted_at: datetime = Field(default_factory=datetime.now, description="Extraction timestamp")
+    processing_language: str = Field(default="fr", description="Detected invoice language")
+    status: Optional[ProcessingStatus] = Field(default=ProcessingStatus.EXTRACTED, description="Processing status")
+```
 
-#### Invoice Classification and Metadata
+**Complete Invoice Data Structure:**
 
-**Invoice Type Recognition**: The system automatically classifies invoices as purchase invoices (factures d'achat) or sales invoices (factures de vente), which determines the appropriate PCG account mappings and journal entry structures.
+The ExtractedInvoice model captures the complete structured data from Phase 1 extraction, including:
 
-**Temporal Data Management**: All date fields are stored as ISO-formatted strings with validation to ensure proper formatting. The system handles various date formats found on invoices and normalizes them to a consistent format.
+- **Invoice Classification**: Automatic detection of purchase vs. sale invoices
+- **Metadata**: Invoice numbers, dates, parties (vendors/customers)
+- **Financial Data**: HT/TTC amounts, VAT details, line items with full detail
+- **Payment Tracking**: Comprehensive payment status and method tracking
+- **Quality Metrics**: Extraction confidence scoring and language detection
+- **Status Tracking**: Current processing status within the pipeline
 
-**Currency and Localization**: While the system defaults to EUR (euros) for French accounting, it supports multiple currencies with proper conversion tracking and compliance with multi-currency accounting standards.
+### VATDetail
 
-#### Financial Data Structure
+```python
+class VATDetail(BaseModel):
+    rate: float = Field(..., ge=0, le=100, description="VAT rate as percentage")
+    amount: float = Field(..., ge=0, description="VAT amount")
+```
 
-**Amount Separation**: The model maintains strict separation between:
-- **HT (Hors Taxes)**: Amounts excluding VAT, used for expense/revenue recognition
-- **TTC (Toutes Taxes Comprises)**: Amounts including VAT, used for payment tracking
-- **VAT Details**: Structured breakdown of VAT by rate and amount
+**VAT Breakdown Structure:**
+- Supports multiple VAT rates per invoice
+- French VAT rates: 20%, 10%, 5.5%, 0%
+- Automatic validation of VAT calculations
 
-**Line Item Granularity**: Each invoice line item is captured with complete detail including:
-- Product/service descriptions for intelligent account mapping
-- Quantities and unit prices for validation and analysis
-- Individual VAT rates and amounts for compliance
-- Product codes when available for enhanced categorization
+### LineItem
 
-#### Confidence and Quality Metrics
+```python
+class LineItem(BaseModel):
+    description: str = Field(..., description="Item/service description")
+    quantity: float = Field(default=1.0, ge=0, description="Quantity")
+    unit_price: float = Field(..., ge=0, description="Unit price excluding VAT")
+    line_amount_ht: float = Field(..., ge=0, description="Line amount excluding VAT")
+    line_vat_rate: float = Field(..., ge=0, le=100, description="VAT rate for this line")
+    line_vat_amount: float = Field(..., ge=0, description="VAT amount for this line")
+    product_code: Optional[str] = Field(None, description="Product code if available")
+    category: Optional[str] = Field(None, description="Item category")
+    notes: Optional[str] = Field(None, description="Additional notes")
+```
 
-**Extraction Confidence**: Each extracted invoice includes an overall confidence score (0.0 to 1.0) calculated based on:
-- Data completeness (all required fields extracted)
-- Format validation (proper date formats, numeric values)
-- Cross-validation (line item totals match invoice totals)
-- OCR quality indicators
+**Detailed Line Item Tracking:**
+- Complete financial breakdown per line
+- Product/service categorization for account mapping
+- Individual VAT handling per line item
 
-**Language Detection**: The system automatically detects the invoice language, enabling appropriate processing workflows and compliance with multi-language requirements.
+### AccountingProposals
 
-### AccountingProposals - Intelligent PCG Mapping
+```python
+class AccountingProposals(BaseModel):
+    invoice_id: str = Field(..., description="Reference to extracted invoice")
+    invoice_type: InvoiceType = Field(..., description="Purchase or sale invoice")
+    
+    # Tiers account proposal
+    tiers_proposal: TiersProposal = Field(..., description="Proposed tiers account")
+    
+    # Line item proposals
+    line_item_proposals: List[LineItemProposal] = Field(..., description="Proposals for each line item")
+    
+    # Overall confidence
+    overall_confidence: float = Field(..., ge=0, le=1, description="Overall imputation confidence")
+    
+    # Processing metadata
+    imputed_at: datetime = Field(default_factory=datetime.now, description="Imputation timestamp")
+    status: Optional[ProcessingStatus] = Field(default=ProcessingStatus.IMPUTED, description="Processing status")
+    error_message: Optional[str] = Field(None, description="Error message if any")
+```
 
-This model represents the sophisticated account mapping proposals generated during Phase 2, where extracted invoice data is mapped to French PCG accounts.
+### AccountProposal
 
-#### Tiers Account Mapping
+```python
+class AccountProposal(BaseModel):
+    account_number: str = Field(..., description="PCG account number")
+    account_title: str = Field(..., description="PCG account title")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence score for this mapping")
+    reasoning: Optional[str] = Field(None, description="LLM reasoning for this choice")
+```
 
-**Vendor/Customer Recognition**: The system intelligently maps business entities to appropriate tiers accounts:
+### TiersProposal
+
+```python
+class TiersProposal(BaseModel):
+    party_name: str = Field(..., description="Vendor or customer name")
+    party_type: str = Field(..., description="vendor or customer")
+    proposed_account: AccountProposal = Field(..., description="Proposed tiers account (401xxx/411xxx)")
+```
+
+**Tiers Account Mapping:**
 - **401xxx series**: Supplier accounts (Fournisseurs) for purchase invoices
 - **411xxx series**: Customer accounts (Clients) for sales invoices
-- **Automatic Account Creation**: When new vendors/customers are encountered, the system proposes new account numbers following PCG conventions
+- **Confidence-based proposals**: LLM reasoning and confidence scoring
+- **Automatic account generation**: New vendor/customer account creation
 
-**Confidence-Based Proposals**: Each tiers proposal includes:
-- **Primary Recommendation**: The most likely account with confidence score
-- **Alternative Options**: Secondary choices when confidence is below threshold
-- **Reasoning Chain**: LLM-generated explanation for the mapping decision
+### LineItemProposal
 
-#### Line Item Account Mapping
+```python
+class LineItemProposal(BaseModel):
+    line_index: int = Field(..., description="Index of line item in original invoice")
+    line_description: str = Field(..., description="Original line description")
+    line_amount_ht: float = Field(..., description="Line amount excluding VAT")
+    
+    # Proposed accounts
+    charge_product_account: AccountProposal = Field(..., description="Proposed charge/product account (6xx/7xx/2xx)")
+    vat_account: AccountProposal = Field(..., description="Proposed VAT account (4456x/4457x)")
+    
+    # VAT information
+    vat_rate: float = Field(..., description="VAT rate for this line")
+    vat_amount: float = Field(..., description="VAT amount for this line")
+```
 
-**Product/Service Categorization**: Each line item gets mapped to appropriate expense or revenue accounts:
+**Intelligent Line Item Mapping:**
 - **6xx series**: Expense accounts for purchases (achats, charges)
 - **7xx series**: Revenue accounts for sales (ventes, produits)
 - **2xx series**: Asset accounts for capital purchases
+- **4456x/4457x**: VAT accounts based on transaction type and rates
+- **LLM-powered categorization**: AI-driven account suggestions with reasoning
 
-**VAT Account Handling**: Sophisticated VAT account mapping based on:
-- **Transaction Type**: Purchase vs. sales VAT accounts
-- **VAT Rates**: Different accounts for 20%, 10%, 5.5%, and 0% VAT
-- **Deductibility**: Proper handling of deductible vs. non-deductible VAT
+### ImprovedFinalAccountingEntry
 
-#### Validation and Compliance
+```python
+class ImprovedFinalAccountingEntry(BaseModel):
+    invoice_id: str = Field(..., description="Reference to extracted invoice")
+    entry_id: Optional[str] = Field(None, description="Unique journal entry identifier")
+    
+    # Related data
+    original_invoice: Optional["ExtractedInvoice"] = Field(None, description="Original extracted invoice")
+    accounting_proposals: Optional["AccountingProposals"] = Field(None, description="Accounting proposals")
+    
+    # Entry metadata (all at top level)
+    entry_date: str = Field(..., description="Journal entry date (YYYY-MM-DD)")
+    entry_reference: str = Field(..., description="Journal entry reference")
+    entry_description: str = Field(..., description="Overall entry description")
+    journal_type: str = Field(..., description="Journal type (purchase/sale/credit_note)")
+    due_date_calculated: Optional[str] = Field(None, description="Calculated due date (YYYY-MM-DD)")
+    
+    # Journal entry lines (single consolidated array)
+    entry_lines: List[EnhancedJournalEntryLine] = Field(..., description="All journal entry lines")
+    
+    # Processing status
+    status: ProcessingStatus = Field(default=ProcessingStatus.COMPLETED, description="Processing status")
+    error_message: Optional[str] = Field(None, description="Error message if any")
+    
+    # Balance validation
+    total_debit: float = Field(..., ge=0, description="Total debit amount")
+    total_credit: float = Field(..., ge=0, description="Total credit amount")
+    is_balanced: bool = Field(..., description="Whether entry is balanced")
+    balance_difference: float = Field(default=0.0, description="Difference if unbalanced")
+    
+    # Processing metadata
+    overall_confidence: float = Field(..., ge=0, le=1, description="Overall entry confidence from proposals")
+    generated_at: datetime = Field(default_factory=datetime.now, description="Generation timestamp")
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
+    updated_at: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
+```
 
-**PCG Validation**: All proposed accounts are validated against the official French Chart of Accounts to ensure:
-- Account numbers exist and are active
-- Account types match the transaction nature
-- Regulatory compliance is maintained
+### EnhancedJournalEntryLine
 
-**Confidence Thresholds**: The system uses sophisticated confidence scoring to:
-- Flag low-confidence mappings for human review
-- Automatically approve high-confidence mappings
-- Provide detailed reasoning for all proposals
+```python
+class EnhancedJournalEntryLine(BaseModel):
+    line_number: int = Field(..., description="Line item number")
+    account_number: str = Field(..., description="PCG account number")
+    account_name: str = Field(..., description="PCG account name/title")
+    description: str = Field(..., description="Line description")
+    debit_amount: Optional[float] = Field(None, ge=0, description="Debit amount (null if credit)")
+    credit_amount: Optional[float] = Field(None, ge=0, description="Credit amount (null if debit)")
+    third_party_code: Optional[str] = Field(None, description="Third party code (customer/vendor)")
+    analytical_code: Optional[str] = Field(None, description="Analytical accounting code")
+    vat_code: Optional[str] = Field(None, description="VAT code (e.g., TVA20, TVA10)")
+    vat_rate: Optional[float] = Field(None, ge=0, le=100, description="VAT rate percentage")
+    line_reference: Optional[str] = Field(None, description="Reference to source line item")
+```
 
-### FinalAccountingEntry - Complete Journal Entries
+**Complete Journal Entry Structure:**
 
-This model represents the final balanced double-entry journal entries that form the accounting output of the system.
+The ImprovedFinalAccountingEntry provides:
 
-#### Double-Entry Validation
+- **Balance Validation**: Automatic debit/credit balance checking with 1-cent tolerance
+- **French Compliance**: Proper journal type classification (JA, JV, BQ, OD)
+- **Enhanced Line Items**: Complete PCG account details with VAT handling
+- **Traceability**: Full audit trail to source documents
+- **Status Tracking**: Real-time processing status updates
 
-**Balance Enforcement**: Every journal entry is automatically validated to ensure:
-- Total debits equal total credits (fundamental accounting principle)
-- All amounts are positive and properly formatted
-- Currency consistency throughout the entry
+### JournalType
 
-**Line Item Structure**: Each journal line includes:
-- **Account Information**: PCG account number and official title
-- **Amount Classification**: Clear separation of debit and credit amounts
-- **Descriptions**: Detailed descriptions linking back to source documents
-- **Reference Data**: Traceability to original invoice line items
+```python
+class JournalType(str, Enum):
+    SALES_JOURNAL = "sales_journal"  # Journal des Ventes (JV)
+    PURCHASE_JOURNAL = "purchase_journal"  # Journal des Achats (JA)
+    BANK_JOURNAL = "bank_journal"  # Journal de Banque (BQ)
+    CASH_JOURNAL = "cash_journal"  # Journal de Caisse (CS)
+    OPERATIONS_JOURNAL = "operations_journal"  # Journal des Opérations Diverses (OD)
+```
 
-#### French Accounting Compliance
+**French Accounting Journal Types:**
+- **JV**: Sales journal for customer invoices
+- **JA**: Purchase journal for supplier invoices  
+- **BQ**: Bank journal for bank transactions
+- **CS**: Cash journal for cash operations
+- **OD**: Miscellaneous operations journal
 
-**Journal Type Classification**: Entries are properly classified according to French accounting standards:
-- **Journal des Achats (JA)**: Purchase journal for supplier invoices
-- **Journal des Ventes (JV)**: Sales journal for customer invoices
-- **Journal de Banque (BQ)**: Bank journal for payment transactions
-- **Journal des Opérations Diverses (OD)**: Miscellaneous operations journal
+## Payment Models
 
-**Reference Standards**: All entries comply with:
-- **FEC Format**: Fichier des Écritures Comptables for regulatory reporting
-- **PCG Structure**: Proper use of French chart of accounts
-- **VAT Regulations**: Compliance with French VAT reporting requirements
+### PaymentStatusEnum
 
-#### Enhanced Metadata
+```python
+class PaymentStatusEnum(str, Enum):
+    UNPAID = "unpaid"
+    PAID = "paid"
+    PARTIALLY_PAID = "partially_paid"
+    OVERDUE = "overdue"
+    CANCELLED = "cancelled"
+```
 
-**Traceability**: Complete audit trail linking journal entries back to:
-- Original source documents
-- Extraction results and confidence scores
-- Account mapping decisions and reasoning
-- Processing timestamps and user actions
+### PaymentMethodEnum
 
-**Multi-Language Support**: Journal descriptions are generated in multiple languages:
-- **French**: Primary language for compliance
-- **English**: International business support
-- **Arabic**: Regional business requirements
+```python
+class PaymentMethodEnum(str, Enum):
+    BANK_TRANSFER = "bank_transfer"
+    CHECK = "check"
+    CASH = "cash"
+    CREDIT_CARD = "credit_card"
+    DIRECT_DEBIT = "direct_debit"
+    OTHER = "other"
+```
 
----
+### PaymentStatusUpdate
 
-## Specialized Models
+```python
+class PaymentStatusUpdate(BaseModel):
+    payment_status: PaymentStatusEnum = Field(..., description="Payment status")
+    payment_method: Optional[PaymentMethodEnum] = Field(None, description="Payment method")
+    payment_date: Optional[str] = Field(None, description="Payment date (YYYY-MM-DD)")
+    paid_amount: Optional[float] = Field(None, ge=0, description="Amount paid")
+    payment_reference: Optional[str] = Field(None, description="Payment reference")
+    payment_notes: Optional[str] = Field(None, description="Additional payment notes")
+```
 
-### PaymentStatusUpdate - Payment Tracking
+**Payment Tracking Features:**
+- Comprehensive status tracking with aging support
+- French payment method support (virement, chèque, espèces)
+- Partial payment handling with balance tracking
+- Automatic payment reference generation
 
-This model handles the complex requirements of payment status management for invoices.
+### FinancialJournalEntry
 
-#### Payment Status Enumeration
+```python
+class FinancialJournalEntry(BaseModel):
+    entry_id: str = Field(..., description="Unique financial journal entry identifier")
+    invoice_id: str = Field(..., description="Reference to original invoice")
+    
+    # Entry metadata
+    entry_date: str = Field(..., description="Financial journal entry date (YYYY-MM-DD)")
+    entry_reference: str = Field(..., description="Financial journal entry reference")
+    entry_description: str = Field(..., description="Financial journal entry description")
+    journal_type: str = Field(default="financial", description="Journal type (financial/payment)")
+    
+    # Payment information
+    payment_status: PaymentStatusEnum = Field(..., description="Payment status")
+    payment_method: PaymentMethodEnum = Field(..., description="Payment method")
+    payment_amount: float = Field(..., ge=0, description="Payment amount")
+    payment_reference: Optional[str] = Field(None, description="Payment reference")
+    
+    # Journal entry lines
+    entry_lines: List[EnhancedJournalEntryLine] = Field(..., description="Financial journal entry lines")
+    
+    # Balance validation
+    total_debit: float = Field(..., ge=0, description="Total debit amount")
+    total_credit: float = Field(..., ge=0, description="Total credit amount")
+    is_balanced: bool = Field(..., description="Whether entry is balanced")
+    balance_difference: float = Field(default=0.0, description="Difference if unbalanced")
+    
+    # Processing metadata
+    generated_at: datetime = Field(default_factory=datetime.now, description="Generation timestamp")
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
+    updated_at: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
+```
 
-**Comprehensive Status Tracking**:
-- **Unpaid**: Invoice issued but payment not received
-- **Paid**: Full payment received and reconciled
-- **Partially Paid**: Partial payment with remaining balance
-- **Overdue**: Payment past due date with automatic aging
-- **Cancelled**: Invoice cancelled or voided
+**Financial Journal Features:**
+- Separate payment journal entries from initial invoice journals
+- Support for bank, cash, and operations journals (BQ, CS, OD)
+- Automatic payment reconciliation and account clearing
+- Balance validation for all financial transactions
 
-#### Payment Method Classification
+## Financial Document Processing Models
 
-**French Payment Methods**: Support for common French business payment methods:
-- **Virement Bancaire**: Bank transfers (most common)
-- **Chèque**: Check payments with proper tracking
-- **Espèces**: Cash payments with compliance considerations
-- **Carte de Crédit**: Credit card payments
-- **Prélèvement Automatique**: Direct debit arrangements
+### FinancialDocumentData
 
-#### Financial Journal Integration
+```python
+class FinancialDocumentData(BaseModel):
+    document_id: str = Field(..., description="Unique document identifier")
+    document_type: DocumentType = Field(..., description="Type of document")
+    document_date: Optional[str] = Field(None, description="Document date")
+    reference_number: Optional[str] = Field(None, description="Document reference number")
+    amount: Optional[float] = Field(None, description="Document amount")
+    currency: str = Field(default="EUR", description="Currency code")
+    description: Optional[str] = Field(None, description="Document description")
+    parties: List[Dict[str, Any]] = Field(default_factory=list, description="Involved parties")
+    line_items: List[Dict[str, Any]] = Field(default_factory=list, description="Document line items")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+```
 
-**Automatic Journal Generation**: When payment status is updated, the system can automatically generate:
-- **Bank Journal Entries**: Recording the payment transaction
-- **Customer/Supplier Account Updates**: Clearing the receivable/payable
-- **VAT Adjustments**: Handling VAT timing differences if applicable
+### DocumentProcessingRequest
 
-### FinancialJournalEntry - Payment Journals
+```python
+class DocumentProcessingRequest(BaseModel):
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    document_type: DocumentType = Field(..., description="Type of document to process")
+    file_path: str = Field(..., description="Path to the document file")
+    force_regenerate: bool = Field(default=False, description="Force regeneration of existing entries")
+    custom_context: Optional[Dict[str, Any]] = Field(None, description="Additional context for processing")
+```
 
-This specialized model handles the generation of financial journal entries for payment transactions, separate from the initial purchase/sale journal entries.
+### IntelligentJournalRequest
 
-#### Payment-Specific Journal Types
+```python
+class IntelligentJournalRequest(BaseModel):
+    invoice_id: str = Field(..., description="Associated invoice ID")
+    document_data: FinancialDocumentData = Field(..., description="Extracted document data")
+    journal_type: JournalType = Field(..., description="Target journal type")
+    force_regenerate: bool = Field(default=False, description="Force regeneration of existing entries")
+```
 
-**Bank Journal (BQ)**: Records bank account movements:
-- Debit to bank account for customer payments received
-- Credit to bank account for supplier payments made
-- Proper bank account coding and reference numbers
+**Extended Document Processing:**
+- Support for 20+ financial document types
+- Bank statements, payroll, expense receipts, contracts
+- Intelligent journal generation using LLM
+- Custom context and metadata handling
 
-**Cash Journal (CS)**: Handles cash transactions:
-- Cash receipts from customers
-- Cash payments to suppliers
-- Petty cash management and reconciliation
+## Utility Classes
 
-#### Integration with Core Accounting
+### VATCodeGenerator
 
-**Two-Stage Journal Process**: The system maintains separation between:
-1. **Commercial Journals**: Recording the business transaction (purchase/sale)
-2. **Financial Journals**: Recording the payment transaction
+```python
+@staticmethod
+def generate_vat_code(vat_rate: float, invoice_type: InvoiceType) -> str:
+    """Generate VAT code based on rate and invoice type."""
+    if vat_rate == 0:
+        return "TVA0"
+    elif vat_rate == 10:
+        return "TVA10"
+    elif vat_rate == 20:
+        return "TVA20"
+    elif vat_rate == 5.5:
+        return "TVA5.5"
+    else:
+        return f"TVA{vat_rate:.1f}"
+```
 
-This separation enables proper cash flow tracking and compliance with French accounting practices where commercial and financial aspects are often recorded separately.
+### DueDateCalculator
 
----
+```python
+@staticmethod
+def calculate_due_date(invoice_date: str, payment_terms: Optional[str] = None) -> Optional[str]:
+    """Calculate due date from invoice date and payment terms."""
+    # Supports 30/60/15 day terms, immediate payment, custom terms
+```
 
-## Validation and Business Rules
+### MultilingualDescriptionGenerator
 
-### Data Integrity Enforcement
+```python
+@staticmethod
+def generate_entry_description(
+    invoice_type: InvoiceType,
+    party_name: str,
+    invoice_number: str,
+    language: str = "fr"
+) -> str:
+    """Generate entry description in specified language (fr/en)."""
+```
 
-#### Financial Validation Rules
+**Business Logic Utilities:**
+- Automatic VAT code generation for French tax compliance
+- Due date calculation with payment terms parsing
+- Multilingual journal descriptions (French/English)
+- Account validation and PCG compliance checking
 
-**Amount Consistency**: Sophisticated validation ensures:
-- Line item amounts sum to invoice totals
-- VAT calculations are mathematically correct
-- Currency amounts have appropriate decimal precision
-- No negative amounts in inappropriate contexts
-
-**Date Logic Validation**: Business rules for dates include:
-- Invoice dates cannot be in the future
-- Due dates must be after invoice dates
-- Payment dates must be logical relative to invoice dates
-- Fiscal year consistency for accounting periods
-
-#### PCG Compliance Rules
-
-**Account Number Validation**: Strict validation of PCG account numbers:
-- Proper digit structure and check digits
-- Account existence in the official chart
-- Appropriate account types for transaction nature
-- Compliance with French accounting plan structure
-
-**VAT Rate Validation**: Enforcement of French VAT regulations:
-- Valid VAT rates (20%, 10%, 5.5%, 2.1%, 0%)
-- Proper application based on product/service type
-- Compliance with VAT exemption rules
-- Correct handling of intra-EU transactions
-
-### Error Handling and Recovery
-
-#### Graceful Degradation
-
-**Confidence-Based Processing**: When validation fails or confidence is low:
-- System continues processing with warnings
-- Human review workflows are triggered
-- Partial results are preserved for correction
-- Complete audit trails are maintained
-
-**Recovery Mechanisms**: Built-in recovery for common issues:
-- Missing account mappings trigger fallback rules
-- Invalid amounts are flagged but don't stop processing
-- Date format issues are automatically corrected when possible
-- Currency conversion errors are handled gracefully
-
----
-
-## Performance and Optimization
-
-### Efficient Data Structures
-
-#### Memory Optimization
-
-**Selective Loading**: Models support lazy loading of expensive fields:
-- Full OCR text is only loaded when needed
-- Large JSON responses are compressed in storage
-- Historical data is archived but remains accessible
-- Caching strategies minimize memory usage
-
-#### Serialization Performance
-
-**Optimized JSON Handling**: Custom serialization for performance:
-- DateTime objects are efficiently serialized
-- Large nested structures are optimized
-- Database ObjectIds are handled seamlessly
-- Compression is applied to large text fields
-
-### Scalability Considerations
-
-#### Horizontal Scaling
-
-**Stateless Design**: Models are designed for distributed processing:
-- No shared state between model instances
-- Thread-safe validation and calculation methods
-- Efficient serialization for inter-service communication
-- Support for async processing patterns
-
-The Accounting Models provide the foundation for reliable, compliant, and efficient processing of financial documents while maintaining the flexibility needed for diverse business requirements and international expansion. 
+The Accounting Models provide a comprehensive foundation for French accounting automation, supporting the complete invoice-to-journal workflow with sophisticated validation, payment tracking, and extended financial document processing capabilities. 

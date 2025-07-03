@@ -1,217 +1,510 @@
 ---
 title: "Database Service"
-description: "MongoDB-based data persistence layer for the complete accounting automation pipeline"
+description: "MongoDB-based data persistence service for the Textra accounting automation platform"
 ---
 
-# Database Service
+The Database Service provides MongoDB-based data persistence for the Textra accounting automation platform. It manages six core collections with optimized indexing, async operations, and comprehensive CRUD functionality for all phases of the accounting pipeline.
 
-The Database Service is the cornerstone of Textra's data persistence architecture, providing a comprehensive MongoDB-based solution for managing the entire accounting automation pipeline. This service handles everything from initial invoice uploads to final journal entry storage, ensuring data integrity and performance throughout the process.
+## Service Architecture
 
-## System Architecture
+### Core Collections
 
-### Core Responsibilities
+The Database Service manages **6 primary collections** with specific purposes:
 
-The Database Service manages the complete data lifecycle of invoice processing through a carefully designed collection structure that mirrors the 5-phase accounting pipeline:
-
-**Phase Tracking**: Each phase of the accounting pipeline (extraction, imputation, journal generation, validation, export) is tracked with detailed metadata, allowing for complete audit trails and process monitoring.
-
-**Data Relationships**: The service maintains referential integrity between related documents across collections, enabling complex queries and reporting while maintaining performance.
-
-**Performance Optimization**: Strategic indexing and query optimization ensure fast data retrieval even with large volumes of processed invoices.
-
-**Async Operations**: Built on Motor (async MongoDB driver) to handle concurrent operations efficiently without blocking the main application thread.
-
-### Database Design Philosophy
-
-The database schema follows a **document-per-phase** approach where each major processing phase stores its results in dedicated collections. This design provides several advantages:
-
-- **Isolation**: Each phase can be independently queried and analyzed
-- **Scalability**: Collections can be optimized individually based on access patterns
-- **Debugging**: Easy to trace issues through specific phases
-- **Reporting**: Phase-specific analytics and performance monitoring
-- **Recovery**: Granular recovery options if specific phases fail
-
----
-
-## Collection Architecture
-
-### 1. Processed Invoices - The Master Record
-
-This collection serves as the central registry for all invoice processing activities. Every invoice that enters the system gets a record here, which then becomes the primary key for all subsequent processing phases.
-
-**Key Information Stored:**
-- Invoice identification and file metadata
-- Processing status tracking through all phases
-- LLM provider used for processing
-- Task management and Celery job tracking
-- Export file paths and completion status
-- Error tracking and debugging information
-
-**Status Flow Management:**
-The processing status field tracks the invoice through its complete lifecycle: `pending` → `extracting` → `extracted` → `imputing` → `imputed` → `generating` → `generated` → `exporting` → `exported` → `completed`
-
-This granular status tracking allows for precise monitoring of where invoices are in the pipeline and enables automatic recovery from failures.
-
-### 2. Extraction Data - OCR and AI Results
-
-This collection stores the results from Phase 1 of the pipeline, where raw invoice documents are converted into structured data through OCR and Large Language Model processing.
-
-**OCR Integration:**
-The service stores both the raw OCR text and the structured data extracted by the LLM. This dual storage approach enables:
-- **Debugging**: When LLM extraction fails, the raw OCR text is available for analysis
-- **Reprocessing**: Invoices can be reprocessed with different LLM providers without re-running OCR
-- **Quality Analysis**: Comparison between OCR quality and extraction success rates
-
-**Confidence Scoring:**
-Each extraction includes detailed confidence scores that help identify potential issues early in the pipeline. These scores are calculated based on:
-- Data completeness (all required fields extracted)
-- Format validation (dates, amounts, VAT rates)
-- Cross-validation between line items and totals
-- LLM response coherence and structure
-
-### 3. Accounting Proposals - PCG Mapping Intelligence
-
-This collection contains the sophisticated account mapping proposals generated in Phase 2, where the extracted invoice data is mapped to French PCG (Plan Comptable Général) accounts.
-
-**Intelligent Account Mapping:**
-The system doesn't just store account numbers—it stores the complete reasoning process:
-- **Confidence Levels**: Each proposed account comes with a confidence score
-- **LLM Reasoning**: The AI's explanation for why specific accounts were chosen
-- **Validation Results**: Whether proposed accounts exist in the PCG and are valid
-- **Alternative Suggestions**: Secondary account options when primary choices have low confidence
-
-**Tiers vs Line Item Proposals:**
-The system distinguishes between:
-- **Tiers Proposals**: Vendor/customer account mappings (401xxx for suppliers, 411xxx for customers)
-- **Line Item Proposals**: Product/service account mappings (6xx for purchases, 7xx for sales) plus corresponding VAT accounts
-
-### 4. Journal Entries - The Financial Output
-
-This collection stores the final balanced double-entry journal entries that represent the accounting output of the entire pipeline.
-
-**Double-Entry Validation:**
-Every journal entry is automatically validated to ensure:
-- **Balance Verification**: Total debits must equal total credits
-- **Account Validation**: All account numbers exist in the PCG
-- **VAT Consistency**: VAT calculations match the extracted amounts
-- **Line Item Traceability**: Each journal line can be traced back to its source
-
-**French Accounting Compliance:**
-The journal entries are structured to comply with French accounting standards:
-- **Journal Types**: Proper classification (purchase journal, sales journal, bank journal)
-- **PCG Account Structure**: Correct use of French chart of accounts
-- **VAT Handling**: Proper separation of HT (excluding VAT) and TTC (including VAT) amounts
-- **Reference Standards**: Compliance with FEC (Fichier des Écritures Comptables) format
-
-### 5. Enhanced Journal Entries - Extended Metadata
-
-This collection provides an enhanced version of journal entries with additional metadata for advanced reporting and integration needs.
-
-**Extended Information:**
-- **Due Date Calculations**: Automatic calculation based on payment terms
-- **Multi-language Descriptions**: Support for French, English, and Arabic descriptions
-- **Analytical Codes**: Support for cost center and project tracking
-- **Third-Party Codes**: Enhanced vendor/customer identification
-- **VAT Codes**: Detailed VAT classification for reporting
-
-### 6. Processing Metrics - Performance Intelligence
-
-This collection captures detailed performance metrics for every invoice processed, enabling comprehensive system monitoring and optimization.
-
-**Performance Tracking:**
-- **Phase Timing**: Detailed timing for each processing phase
-- **Cache Performance**: Hit rates and efficiency metrics
-- **LLM Usage**: Token consumption and API call statistics
-- **Confidence Analysis**: Correlation between confidence scores and accuracy
-- **Error Patterns**: Analysis of common failure points
-
----
-
-## Data Flow and Relationships
-
-### Processing Pipeline Data Flow
-
-The data flow through the database follows a strict sequence that mirrors the accounting pipeline:
-
-1. **Initial Record Creation**: When an invoice is uploaded, a record is created in `processed_invoices` with status "pending"
-
-2. **Extraction Phase**: OCR and LLM processing results are stored in `extraction_data` with a reference to the processing record
-
-3. **Imputation Phase**: PCG account mapping proposals are stored in `accounting_proposals` with references to both processing and extraction records
-
-4. **Journal Generation**: Final journal entries are created in `journal_entries` with references to all previous phases
-
-5. **Enhancement**: Enhanced journal entries with additional metadata are stored in `enhanced_journal_entries`
-
-6. **Metrics Collection**: Performance data is captured in `processing_metrics` throughout the entire process
-
-### Referential Integrity
-
-The service maintains strict referential integrity through ObjectId references:
-- All collections reference back to the master `processed_invoices` record
-- Sequential phases reference their immediate predecessors
-- This creates a complete audit trail for every invoice processed
-
-### Query Optimization Strategy
-
-The database is optimized for several key query patterns:
-
-**Real-time Status Queries**: Fast lookup of processing status for user interfaces
-**Historical Analysis**: Efficient aggregation queries for reporting and analytics
-**Error Investigation**: Quick access to failed processing attempts with full context
-**Performance Monitoring**: Rapid calculation of system performance metrics
-
----
-
-## Performance and Scalability
-
-### Indexing Strategy
-
-The service implements a comprehensive indexing strategy designed for the specific access patterns of the accounting pipeline:
-
-**Primary Indexes**: Fast lookup by invoice ID, processing status, and creation date
-**Compound Indexes**: Optimized for common multi-field queries
-**Text Indexes**: Full-text search across vendor names and invoice numbers
-**Sparse Indexes**: Efficient handling of optional fields
+1. **processed_invoices**: Main invoice processing records
+2. **extraction_data**: OCR and LLM extraction results
+3. **accounting_proposals**: PCG account mapping proposals
+4. **journal_entries**: Basic journal entries (legacy)
+5. **enhanced_journal_entries**: Enhanced journal entries with full metadata
+6. **processing_metrics**: Performance and timing metrics
 
 ### Connection Management
 
-The service uses MongoDB's connection pooling to handle concurrent operations efficiently:
-- **Async Operations**: All database operations are non-blocking
-- **Connection Pooling**: Automatic management of database connections
-- **Error Recovery**: Automatic reconnection and retry logic
-- **Resource Management**: Proper cleanup of resources and connections
+```python
+class DatabaseService:
+    def __init__(self, mongodb_url: str = "mongodb://localhost:27017", database_name: str = "textra_accounting"):
+        self.mongodb_url = mongodb_url
+        self.database_name = database_name
+        self.client: Optional[AsyncIOMotorClient] = None
+        self.db: Optional[AsyncIOMotorDatabase] = None
+```
 
-### Data Integrity and Recovery
+## Core Methods
 
-**Backup Strategy**: The service provides metadata for backup operations, including document counts and integrity checks
+### Connection Management
 
-**Recovery Procedures**: Built-in data validation methods to identify and resolve integrity issues
+#### Connect to Database
 
-**Audit Trails**: Complete processing history for every invoice, enabling forensic analysis when needed
+```python
+async def connect(self):
+    """Connect to MongoDB and initialize collections."""
+```
 
----
+Establishes connection to MongoDB, initializes all collections, and creates performance-optimized indexes.
 
-## Integration and APIs
+#### Disconnect from Database
 
-### Service Initialization
+```python
+async def disconnect(self):
+    """Disconnect from MongoDB."""
+```
 
-The Database Service is initialized during application startup and provides global access through dependency injection patterns. This ensures consistent database connections across all application components.
+#### Database Information
 
-### Error Handling
+```python
+async def get_database_info(self) -> dict:
+    """Get database information and statistics."""
+```
 
-Comprehensive error handling includes:
-- **Connection Failures**: Automatic retry with exponential backoff
-- **Data Validation**: Schema validation before insertion
-- **Constraint Violations**: Graceful handling of duplicate records
-- **Performance Issues**: Query timeout handling and optimization suggestions
+Returns comprehensive database statistics including:
+- Connection status
+- Collection counts
+- Server version
+- Performance metrics
 
-### Monitoring and Health Checks
+## Processed Invoices Collection
 
-The service provides detailed health check endpoints that report:
-- **Connection Status**: Database connectivity and response times
-- **Collection Statistics**: Document counts and storage usage
-- **Performance Metrics**: Query performance and index effectiveness
-- **Data Integrity**: Validation of cross-collection references
+### Create Processing Record
 
-The Database Service forms the foundation of Textra's accounting automation, providing reliable, scalable, and intelligent data management that supports the complex requirements of automated financial document processing while maintaining the strict standards required for accounting compliance. 
+```python
+async def create_processed_invoice(
+    self, 
+    invoice_id: str, 
+    file_path: str, 
+    file_name: str, 
+    file_size: int, 
+    llm_provider: str
+) -> ObjectId:
+```
+
+Creates a new invoice processing record with metadata:
+
+```json
+{
+  "invoice_id": "INV-12345678-231201",
+  "file_path": "/uploads/invoice.pdf",
+  "file_name": "invoice.pdf",
+  "file_size": 1024000,
+  "processing_status": "pending",
+  "llm_provider": "gemini",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### Update Processing Status
+
+```python
+async def update_processing_status(
+    self, 
+    processing_id: ObjectId, 
+    status: str, 
+    error_message: Optional[str] = None
+):
+```
+
+**Status Values:**
+- `pending`: Initial state
+- `processing`: Currently being processed
+- `imputing`: Account imputation phase
+- `generating`: Journal generation phase
+- `exporting`: Export phase
+- `completed`: Successfully completed
+- `failed`: Processing failed
+
+### Retrieve Invoice Data
+
+```python
+async def get_invoice_by_id(self, invoice_id: str) -> Optional[Dict[str, Any]]:
+async def get_processed_invoice(self, processing_id: ObjectId) -> Optional[Dict[str, Any]]:
+```
+
+## Extraction Data Collection
+
+### Save Extraction Results
+
+```python
+async def save_extraction_data(
+    self,
+    invoice_id: str,
+    processing_id: ObjectId,
+    extracted_invoice: ExtractedInvoice,
+    confidence_score: float,
+    processing_time: float,
+    llm_provider: str,
+    ocr_text: Optional[str] = None,
+    llm_prompt_used: Optional[str] = None,
+    llm_response_raw: Optional[str] = None
+) -> ObjectId:
+```
+
+Stores complete extraction results including:
+- Structured invoice data
+- OCR text and confidence scores
+- LLM prompts and responses
+- Processing metrics
+
+### Update Extraction Data
+
+```python
+async def update_extraction_data(self, invoice_id: str, update_data: Dict[str, Any]) -> bool:
+```
+
+Supports partial updates for:
+- Payment status
+- Invoice metadata
+- Category information
+- Due dates and amounts
+
+### Retrieve Extraction Data
+
+```python
+async def get_extraction_data(self, extraction_id: ObjectId) -> Optional[Dict[str, Any]]:
+async def get_extraction_data_by_invoice_id(self, invoice_id: str) -> Optional[Dict[str, Any]]:
+async def get_sample_extraction_data(self, limit: int = 1) -> List[Dict[str, Any]]:
+```
+
+## Accounting Proposals Collection
+
+### Save Account Proposals
+
+```python
+async def save_accounting_proposals(
+    self,
+    invoice_id: str,
+    processing_id: ObjectId,
+    extraction_id: ObjectId,
+    accounting_proposals: AccountingProposals,
+    overall_confidence: float,
+    processing_time: float,
+    llm_provider: str,
+    pcg_validation_results: Dict[str, bool],
+    llm_prompts_used: Optional[List[str]] = None,
+    llm_responses_raw: Optional[List[str]] = None
+) -> ObjectId:
+```
+
+Stores PCG account mapping proposals with:
+- Debit/credit account recommendations
+- Confidence scores per account
+- PCG validation results
+- LLM reasoning and prompts
+
+**Data Structure:**
+```json
+{
+  "invoice_id": "INV-12345678-231201",
+  "processing_id": "ObjectId",
+  "extraction_id": "ObjectId",
+  "accounting_proposals": {
+    "debit_accounts": [
+      {
+        "account_number": "606100",
+        "account_name": "Achats stockés - Matières premières",
+        "confidence": 0.92,
+        "amount": 1000.00
+      }
+    ],
+    "credit_accounts": [
+      {
+        "account_number": "401001",
+        "account_name": "Fournisseurs - ACME Corp",
+        "confidence": 0.95,
+        "amount": 1200.00
+      }
+    ]
+  },
+  "overall_confidence": 0.94,
+  "pcg_validation_results": {
+    "606100": true,
+    "401001": true,
+    "44566": true
+  }
+}
+```
+
+## Journal Entries Collections
+
+### Enhanced Journal Entries
+
+```python
+async def save_journal_entries(
+    self,
+    invoice_id: str,
+    processing_id: ObjectId,
+    proposals_id: ObjectId,
+    final_accounting_entry: FinalAccountingEntry,
+    processing_time: float,
+    llm_provider: str,
+    llm_prompt_used: Optional[str] = None,
+    llm_response_raw: Optional[str] = None,
+    validation_errors: Optional[List[str]] = None
+) -> ObjectId:
+```
+
+Creates enhanced journal entries with complete metadata:
+
+```json
+{
+  "invoice_id": "INV-12345678-231201",
+  "processing_id": "ObjectId",
+  "proposals_id": "ObjectId",
+  "enhanced_journal_entry": {
+    "entry_id": "JE-12345678-231201",
+    "entry_date": "2024-01-15",
+    "entry_reference": "FAC-2024-001",
+    "entry_description": "Purchase from ACME Corp",
+    "journal_type": "purchase",
+    "entry_lines": [
+      {
+        "line_number": 1,
+        "account_number": "606100",
+        "account_name": "Achats stockés - Matières premières",
+        "debit_amount": 1000.00,
+        "credit_amount": 0.00,
+        "description": "IT consulting services"
+      },
+      {
+        "line_number": 2,
+        "account_number": "44566",
+        "account_name": "TVA déductible",
+        "debit_amount": 200.00,
+        "credit_amount": 0.00,
+        "description": "VAT 20%"
+      },
+      {
+        "line_number": 3,
+        "account_number": "401ACME",
+        "account_name": "Fournisseur - ACME Corp",
+        "debit_amount": 0.00,
+        "credit_amount": 1200.00,
+        "description": "Amount due to supplier"
+      }
+    ],
+    "total_debit": 1200.00,
+    "total_credit": 1200.00,
+    "is_balanced": true,
+    "original_invoice": {
+      "invoice_number": "FAC-2024-001",
+      "vendor_name": "ACME Corp",
+      "invoice_date": "2024-01-15",
+      "total_amount_ttc": 1200.00
+    }
+  },
+  "total_debit": 1200.00,
+  "total_credit": 1200.00,
+  "is_balanced": true,
+  "balance_difference": 0.00,
+  "line_count": 3,
+  "processing_time": 3.45,
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+## Financial Document Management
+
+### Store Document Upload
+
+```python
+async def store_document_upload(self, upload_record: Dict[str, Any]) -> ObjectId:
+```
+
+Manages uploaded documents with metadata:
+- Document type categorization
+- File integrity hashes
+- Processing status tracking
+- User and timestamp information
+
+### Document Lifecycle
+
+```python
+async def get_processed_document_by_id(self, document_id: str) -> Optional[Dict[str, Any]]:
+async def delete_processed_document(self, document_id: str) -> bool:
+async def get_invoice_documents(self, invoice_id: str) -> List[Dict[str, Any]]:
+```
+
+## Processing Metrics and Analytics
+
+### Save Processing Metrics
+
+```python
+async def save_processing_metrics(
+    self,
+    invoice_id: str,
+    processing_id: ObjectId,
+    metrics: Dict[str, Any]
+) -> ObjectId:
+```
+
+Tracks detailed performance metrics:
+
+```json
+{
+  "invoice_id": "INV-12345678-231201",
+  "processing_id": "ObjectId",
+  "total_processing_time": 12.45,
+  "extraction_time": 3.20,
+  "accounting_time": 4.10,
+  "journal_time": 3.80,
+  "export_time": 1.35,
+  "llm_provider": "gemini",
+  "file_size": 1024000,
+  "confidence_scores": {
+    "extraction": 0.94,
+    "accounting": 0.92,
+    "overall": 0.93
+  },
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### Processing Statistics
+
+```python
+async def get_processing_statistics(self, days: int = 30) -> Dict[str, Any]:
+```
+
+Generates comprehensive analytics:
+
+```json
+{
+  "period_days": 30,
+  "total_processed": 1250,
+  "success_rate": 98.4,
+  "average_processing_time": 12.5,
+  "processing_times": {
+    "extraction": 3.2,
+    "imputation": 4.1,
+    "journal_generation": 3.8,
+    "export": 1.4
+  },
+  "daily_volumes": [
+    {"date": "2024-01-14", "count": 45},
+    {"date": "2024-01-13", "count": 38}
+  ],
+  "error_breakdown": {
+    "extraction_failed": 8,
+    "pcg_mapping_failed": 3,
+    "balance_error": 2
+  }
+}
+```
+
+## Batch Operations
+
+### Batch Metrics
+
+```python
+async def save_batch_metrics(
+    self,
+    batch_id: str,
+    metrics: Dict[str, Any],
+    summary: Dict[str, Any]
+) -> ObjectId:
+```
+
+Tracks batch processing performance and outcomes.
+
+### Task Management
+
+```python
+async def update_task_id(self, processing_id: ObjectId, task_id: str):
+async def update_export_path(self, processing_id: ObjectId, format_name: str, export_path: str):
+```
+
+## Database Optimization
+
+### Indexes
+
+The service creates comprehensive indexes for optimal performance:
+
+```python
+async def _create_indexes(self):
+    """Create database indexes for performance optimization."""
+```
+
+**Processed Invoices Indexes:**
+- `invoice_id`: Primary lookup
+- `processing_status`: Status filtering
+- `created_at`: Temporal queries
+- `llm_provider`: Provider analytics
+- `document_id`: Unique constraint
+
+**Other Collection Indexes:**
+- Extraction data: `invoice_id`, `processing_id`, `created_at`
+- Accounting proposals: `invoice_id`, `processing_id`, `extraction_id`
+- Journal entries: `invoice_id`, `processing_id`, `is_balanced`
+- Processing metrics: `processing_id`, `invoice_id`, `created_at`
+
+### Collection Management
+
+The service supports advanced queries with:
+- Compound indexes for complex filtering
+- Text indexes for search functionality
+- TTL indexes for automatic cleanup
+- Sparse indexes for optional fields
+
+## Service Initialization
+
+### Singleton Pattern
+
+```python
+# Global service instance
+_database_service = None
+
+async def get_database_service() -> DatabaseService:
+    """Get singleton database service instance."""
+
+async def initialize_database_service(
+    mongodb_url: str = "mongodb://localhost:27017", 
+    database_name: str = "textra_accounting"
+):
+    """Initialize database service with connection parameters."""
+
+async def close_database_service():
+    """Close database service and cleanup connections."""
+```
+
+### Configuration
+
+The service supports flexible configuration:
+
+```python
+# Environment-based configuration
+MONGODB_URL = os.environ.get("MONGODB_URL", "mongodb://localhost:27017")
+MONGODB_DB = os.environ.get("MONGODB_DB", "textra_accounting")
+
+# Initialize service
+db_service = await initialize_database_service(
+    mongodb_url=MONGODB_URL,
+    database_name=MONGODB_DB
+)
+```
+
+## Error Handling
+
+The Database Service implements comprehensive error handling:
+
+- **Connection errors**: Automatic retry with exponential backoff
+- **Validation errors**: Schema validation and type checking
+- **Constraint violations**: Unique index and foreign key handling
+- **Performance monitoring**: Query timing and optimization alerts
+
+## Performance Features
+
+### Async Operations
+
+All database operations use Motor's async driver for optimal performance:
+- Non-blocking I/O operations
+- Connection pooling
+- Automatic failover support
+
+### Query Optimization
+
+- Strategic indexing for common query patterns
+- Aggregation pipeline optimization
+- Projection to reduce data transfer
+- Cursor-based pagination for large result sets
+
+
+The Database Service provides the foundation for all data persistence in Textra, ensuring reliable, performant, and scalable data management for the accounting automation pipeline. 

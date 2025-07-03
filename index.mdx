@@ -3,9 +3,7 @@ title: "Textra Documentation"
 description: "Comprehensive technical documentation for Textra's intelligent accounting automation platform"
 ---
 
-# Textra Platform Documentation
-
-Welcome to the comprehensive technical documentation for Textra, an enterprise-grade intelligent accounting automation platform that transforms manual invoice processing into streamlined, AI-powered workflows with French PCG compliance.
+Welcome to the technical documentation for Textra, an intelligent accounting automation platform that transforms manual invoice processing into streamlined, AI-powered workflows with French PCG compliance.
 
 ## Platform Overview
 
@@ -126,9 +124,9 @@ The Textra accounting pipeline represents a sophisticated **5-phase processing a
 
 ## Async Processing & Task Management
 
-### Celery-Based Background Processing
+### RabbitMQ-Based Background Processing
 
-The platform implements **sophisticated asynchronous processing** using Celery with RabbitMQ for reliable, scalable task execution:
+The platform implements **robust asynchronous processing** using RabbitMQ with an `aio-pika` consumer pool (`message_worker`) for reliable, horizontally-scalable task execution:
 
 **Task Types**:
 - **Single Invoice Processing**: Individual document processing with real-time status updates
@@ -150,11 +148,6 @@ The platform implements **sophisticated asynchronous processing** using Celery w
 
 Textra employs a **team-based AI architecture** with specialized agents for different accounting tasks:
 
-#### Invoice Retrieval Agent
-**Specialization**: Database search and document discovery
-**Capabilities**: Natural language queries, complex filtering, intelligent result ranking
-**Integration**: Direct MongoDB integration with optimized aggregation pipelines
-
 #### Invoice QA Agent
 **Specialization**: Document content analysis and question answering
 **Capabilities**: RAG-based responses, detailed invoice analysis, cross-document comparisons
@@ -171,79 +164,3 @@ Textra employs a **team-based AI architecture** with specialized agents for diff
 **Integration**: Full database access with query optimization and result caching
 
 ---
-
-## Enterprise Features
-
-### Security & Compliance
-
-**Data Protection**:
-- **Encryption**: End-to-end encryption for sensitive financial data
-- **Access Control**: Role-based permissions with audit logging
-- **GDPR Compliance**: Privacy-by-design with data minimization and deletion capabilities
-- **Financial Regulations**: Compliance with French accounting standards and audit requirements
-
-**System Reliability**:
-- **High Availability**: Redundant services with automatic failover
-- **Backup & Recovery**: Comprehensive backup strategies with point-in-time recovery
-- **Monitoring**: Real-time system health monitoring with alerting
-- **Performance Optimization**: Continuous optimization based on usage patterns
-
-### Scalability & Performance
-
-**Horizontal Scaling**:
-- **Microservices Architecture**: Independent scaling of different system components
-- **Load Balancing**: Intelligent request distribution across service instances
-- **Caching Strategies**: Multi-layer caching with Redis for optimal performance
-- **Database Optimization**: Sophisticated indexing and query optimization
-
-**Performance Monitoring**:
-- **Real-Time Metrics**: Comprehensive monitoring of all system components
-- **Performance Analytics**: Detailed analysis of processing efficiency and bottlenecks
-- **Capacity Planning**: Predictive analysis for resource requirements
-- **Cost Optimization**: Continuous optimization of cloud resource usage
-
----
-
-## Getting Started
-
-### Development Setup
-
-For developers looking to understand or contribute to the Textra platform:
-
-1. **Architecture Review**: Start with the [Database Service](/services/database) documentation to understand the data flow
-2. **API Exploration**: Review the [Accounting API](/api-reference/accounting) for endpoint capabilities
-3. **Model Understanding**: Study the [Accounting Models](/models/accounting) for data structure comprehension
-4. **AI Integration**: Explore the [LLM Helpers](/utils/llm-helpers) for AI integration patterns
-
-### Integration Guide
-
-For businesses integrating with Textra:
-
-1. **API Authentication**: Set up secure API access with proper credentials
-2. **Webhook Configuration**: Configure webhooks for real-time processing updates
-3. **Data Mapping**: Map your existing data structures to Textra's models
-4. **Testing Environment**: Use the sandbox environment for integration testing
-
----
-
-## Support & Community
-
-### Documentation Maintenance
-
-This documentation is continuously updated to reflect the latest platform capabilities and best practices. Each section provides:
-
-- **Comprehensive Coverage**: Detailed explanation of functionality and architecture
-- **Real-World Examples**: Practical examples based on actual use cases
-- **Performance Insights**: Optimization strategies and performance considerations
-- **Troubleshooting Guides**: Common issues and resolution strategies
-
-### Technical Support
-
-For technical questions, integration support, or platform inquiries:
-
-- **API Reference**: Comprehensive endpoint documentation with examples
-- **Model Documentation**: Detailed data structure specifications
-- **Architecture Guides**: In-depth system design and integration patterns
-- **Performance Optimization**: Best practices for optimal system performance
-
-Textra represents the next generation of accounting automation, combining sophisticated AI technology with robust accounting principles to deliver enterprise-grade financial document processing with French compliance standards.

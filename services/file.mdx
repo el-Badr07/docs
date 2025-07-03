@@ -1,366 +1,436 @@
 ---
 title: "File Service"
-description: "Comprehensive file management system for secure storage, processing, and lifecycle management of financial documents"
+description: "Comprehensive file management service for document uploads, storage, and lifecycle management in Textra"
 ---
 
-# File Service
+The File Service provides comprehensive file management capabilities for Textra's document processing workflows. It handles secure file uploads, organized storage, metadata management, integrity verification, and automated cleanup with support for multiple document types and lifecycle management.
 
-The File Service provides a robust, scalable file management system that handles the complete lifecycle of financial documents within Textra. From secure upload and storage to intelligent processing and automated cleanup, this service ensures that all file operations meet enterprise security standards while providing optimal performance for high-volume document processing.
+## Service Architecture
 
-## Core Architecture
+### Core Components
 
-### Multi-Tier Storage Strategy
+The File Service manages document storage with organized directory structure:
 
-The File Service implements a sophisticated multi-tier storage architecture optimized for different access patterns and cost requirements:
-
-**Hot Storage (Immediate Access)**:
-- **Active Processing**: Files currently being processed through the accounting pipeline
-- **Recent Uploads**: Files uploaded within the last 30 days
-- **Frequently Accessed**: Files accessed multiple times in recent periods
-- **High-Performance SSD**: Fast storage for immediate access requirements
-
-**Warm Storage (Frequent Access)**:
-- **Processed Documents**: Completed documents with occasional access needs
-- **Archive Ready**: Documents approaching archival age but still occasionally accessed
-- **Backup Copies**: Secondary copies for redundancy and disaster recovery
-- **Standard Storage**: Balanced performance and cost for regular access
-
-**Cold Storage (Long-Term Archive)**:
-- **Historical Documents**: Documents older than regulatory access requirements
-- **Compliance Archive**: Documents retained for legal and regulatory compliance
-- **Disaster Recovery**: Long-term backup copies for business continuity
-- **Glacier/Archive Storage**: Low-cost, high-durability storage for infrequent access
-
-### Security Framework
-
-**Encryption at Rest**:
-- **AES-256 Encryption**: Industry-standard encryption for all stored files
-- **Key Management**: Secure key rotation and management using HSM or cloud KMS
-- **Per-File Encryption**: Individual encryption keys for each file
-- **Metadata Protection**: Encryption of file metadata and indexing information
-
-**Encryption in Transit**:
-- **TLS 1.3**: Latest TLS standards for all file transfers
-- **Certificate Pinning**: Enhanced security for API communications
-- **VPN Integration**: Secure tunneling for enterprise network integration
-- **End-to-End Encryption**: Complete encryption from client to storage
-
----
-
-## File Upload and Management
-
-### Upload Processing Pipeline
-
-#### Multi-Format Support
-
-The File Service supports comprehensive file format handling:
-
-**Document Formats**:
-- **PDF**: Native PDF processing with text extraction and image handling
-- **Image Formats**: JPEG, PNG, TIFF, BMP with OCR preparation
-- **Office Documents**: Word, Excel, PowerPoint with content extraction
-- **Archive Formats**: ZIP, RAR with recursive processing of contained files
-
-**Banking Formats**:
-- **OFX**: Open Financial Exchange format for bank statements
-- **QIF**: Quicken Interchange Format for financial data
-- **CSV**: Comma-separated values with intelligent column detection
-- **MT940**: SWIFT MT940 bank statement format
-
-**Specialized Formats**:
-- **EDI**: Electronic Data Interchange for B2B transactions
-- **XML**: Structured XML documents with schema validation
-- **JSON**: JavaScript Object Notation for API data exchange
-- **SEPA**: Single Euro Payments Area format for European transactions
-
-#### Upload Validation and Processing
-
-**File Integrity Checks**:
-- **Virus Scanning**: Real-time malware detection using multiple engines
-- **Format Validation**: Verification of file format against declared MIME type
-- **Size Validation**: Configurable file size limits with overflow handling
-- **Corruption Detection**: File integrity verification using checksums
-
-**Content Analysis**:
-- **Document Type Detection**: Automatic classification of document types
-- **Language Detection**: Identification of document language for processing optimization
-- **Quality Assessment**: Image quality analysis for OCR optimization
-- **Metadata Extraction**: Comprehensive metadata extraction and indexing
-
-### File Storage Organization
-
-#### Hierarchical Storage Structure
-
-**Logical Organization**:
-```
-/storage/
-├── invoices/
-│   ├── 2023/
-│   │   ├── 12/
-│   │   │   ├── processed/
-│   │   │   ├── pending/
-│   │   │   └── failed/
-│   └── archive/
-├── receipts/
-│   ├── employees/
-│   │   ├── EMP-001/
-│   │   └── EMP-002/
-│   └── categories/
-├── bank_statements/
-│   ├── accounts/
-│   │   ├── ACC-001/
-│   │   └── ACC-002/
-│   └── periods/
-└── exports/
-    ├── csv/
-    ├── xml/
-    └── sage/
+```python
+class FileService:
+    def __init__(self, base_upload_dir: str = "uploads"):
+        self.base_upload_dir = Path(base_upload_dir)
+        self.base_upload_dir.mkdir(parents=True, exist_ok=True)
 ```
 
-**Physical Storage Distribution**:
-- **Geographic Distribution**: Multi-region storage for disaster recovery
-- **Load Balancing**: Intelligent distribution across storage nodes
-- **Replication Strategy**: Configurable replication levels based on importance
-- **Performance Optimization**: Automatic placement based on access patterns
+### Directory Structure
 
-#### File Versioning and History
+The service organizes files into **6 specialized subdirectories**:
 
-**Version Control**:
-- **Automatic Versioning**: Automatic version creation on file modifications
-- **Version Comparison**: Tools for comparing different file versions
-- **Rollback Capability**: Ability to revert to previous file versions
-- **Version Metadata**: Detailed tracking of who made changes and when
+1. **invoices**: Invoice documents and receipts
+2. **bank_statements**: Bank statements and financial records
+3. **payroll**: Payroll documents and employee records
+4. **receipts**: Expense receipts and cash receipts
+5. **general**: Other financial documents and miscellaneous files
+6. **temp**: Temporary files for processing
 
-**Change Tracking**:
-- **Modification Logs**: Complete audit trail of all file modifications
-- **Access Logs**: Detailed logging of file access patterns
-- **Processing History**: History of all processing operations on files
-- **User Activity**: Tracking of user interactions with files
+```python
+self.subdirs = {
+    "invoices": self.base_upload_dir / "invoices",
+    "bank_statements": self.base_upload_dir / "bank_statements",
+    "payroll": self.base_upload_dir / "payroll",
+    "receipts": self.base_upload_dir / "receipts",
+    "general": self.base_upload_dir / "general",
+    "temp": self.base_upload_dir / "temp"
+}
+```
 
----
+### Document Type Mapping
 
-## Advanced File Processing
+The service intelligently maps document types to appropriate directories:
 
-### Intelligent Content Extraction
+```python
+type_mapping = {
+    "invoice": "invoices",
+    "bank_statement": "bank_statements",
+    "payroll_document": "payroll",
+    "expense_receipt": "receipts",
+    "cash_receipt": "receipts",
+    "supplier_statement": "general",
+    "customer_payment": "general",
+    "loan_document": "general",
+    "insurance_document": "general",
+    "utility_bill": "general",
+    "government_document": "general",
+    "other": "general"
+}
+```
 
-#### OCR and Text Processing
+## Core Methods
 
-**Advanced OCR Capabilities**:
-- **Multi-Language Support**: OCR processing in French, English, German, Spanish, and other languages
-- **Handwriting Recognition**: Processing of handwritten text in financial documents
-- **Table Extraction**: Intelligent extraction of tabular data from documents
-- **Form Recognition**: Automatic recognition and processing of standard forms
+### Upload Directory Management
 
-**Text Enhancement**:
-- **Noise Reduction**: Image preprocessing to improve OCR accuracy
-- **Deskewing**: Automatic correction of skewed document images
-- **Contrast Enhancement**: Optimization of image contrast for better text recognition
-- **Resolution Upscaling**: AI-powered upscaling of low-resolution images
+```python
+def get_upload_directory(self, document_type: str) -> Path:
+    """Get the appropriate upload directory for a document type."""
+```
 
-#### Document Structure Analysis
+Returns the correct storage directory based on document type, ensuring organized file management and easy retrieval.
 
-**Layout Recognition**:
-- **Header/Footer Detection**: Automatic identification of document headers and footers
-- **Column Detection**: Recognition of multi-column layouts
-- **Section Identification**: Automatic segmentation of document sections
-- **Logo and Signature Detection**: Identification of company logos and signatures
+### File Upload Processing
 
-**Content Classification**:
-- **Document Type Classification**: Automatic classification of document types
-- **Content Categorization**: Classification of document content by category
-- **Importance Scoring**: Scoring of document sections by importance
-- **Relationship Mapping**: Identification of relationships between document elements
+```python
+async def save_uploaded_file(
+    self,
+    file: UploadFile,
+    document_type: str,
+    invoice_id: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> Dict[str, Any]:
+```
 
-### File Format Conversion
+**Upload Process:**
+1. Determines appropriate upload directory based on document type
+2. Generates unique filename with timestamp and optional invoice ID
+3. Reads and validates file content
+4. Calculates SHA-256 hash for integrity verification
+5. Saves file with appropriate permissions
+6. Returns comprehensive file metadata
 
-#### Universal Format Support
+**Filename Generation:**
+```python
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+file_extension = Path(file.filename).suffix if file.filename else ""
 
-**Input Format Processing**:
-- **Legacy Format Support**: Processing of older file formats and proprietary formats
-- **Batch Conversion**: Efficient batch processing of multiple files
-- **Quality Preservation**: Maintaining document quality during conversion
-- **Metadata Preservation**: Preserving metadata across format conversions
+if invoice_id:
+    filename = f"{invoice_id}_{timestamp}_{document_type}{file_extension}"
+else:
+    filename = f"{timestamp}_{document_type}{file_extension}"
+```
 
-**Output Format Generation**:
-- **PDF Generation**: High-quality PDF generation with text layer preservation
-- **Image Export**: Export to various image formats with configurable quality
-- **Structured Data Export**: Export to JSON, XML, CSV with structured data
-- **Archive Generation**: Creation of compressed archives for bulk downloads
+**File Information Response:**
+```json
+{
+  "filename": "INV-12345678-231201_20240115_103000_invoice.pdf",
+  "original_filename": "invoice.pdf",
+  "file_path": "/uploads/invoices/INV-12345678-231201_20240115_103000_invoice.pdf",
+  "relative_path": "invoices/INV-12345678-231201_20240115_103000_invoice.pdf",
+  "file_size": 1024000,
+  "file_hash": "a1b2c3d4e5f6789...",
+  "mime_type": "application/pdf",
+  "document_type": "invoice",
+  "invoice_id": "INV-12345678-231201",
+  "user_id": "user123",
+  "upload_timestamp": "2024-01-15T10:30:00Z",
+  "upload_directory": "/uploads/invoices"
+}
+```
 
-#### Optimization and Compression
+## File Retrieval and Management
 
-**File Size Optimization**:
-- **Intelligent Compression**: AI-driven compression that maintains quality
-- **Progressive Loading**: Support for progressive image loading
-- **Thumbnail Generation**: Automatic generation of document thumbnails
-- **Preview Generation**: Creation of preview images for quick document review
+### File Content Access
 
-**Performance Optimization**:
-- **Lazy Loading**: On-demand loading of file content
-- **Caching Strategy**: Intelligent caching of frequently accessed files
-- **CDN Integration**: Content delivery network integration for global access
-- **Bandwidth Optimization**: Adaptive quality based on connection speed
+```python
+def get_file_content(self, file_path: str) -> Optional[bytes]:
+    """Get file content by path."""
+```
 
----
+Safely retrieves file content with error handling and existence verification.
 
-## Security and Compliance
+### File Information Retrieval
 
-### Access Control and Permissions
+```python
+def get_file_info(self, file_path: str) -> Optional[Dict[str, Any]]:
+    """Get file information."""
+```
 
-#### Role-Based Access Control
+Returns comprehensive file metadata:
 
-**Permission Levels**:
-- **Read Only**: View files and metadata without modification rights
-- **Read/Write**: Full access to files with modification capabilities
-- **Admin**: Administrative access including permission management
-- **Audit**: Special access for compliance and audit purposes
+```json
+{
+  "filename": "invoice.pdf",
+  "file_path": "/uploads/invoices/invoice.pdf",
+  "file_size": 1024000,
+  "created_time": "2024-01-15T10:30:00Z",
+  "modified_time": "2024-01-15T10:30:00Z",
+  "mime_type": "application/pdf",
+  "exists": true
+}
+```
 
-**Granular Permissions**:
-- **File-Level Permissions**: Individual permissions for specific files
-- **Folder-Level Permissions**: Inherited permissions for directory structures
-- **Time-Based Access**: Temporary access permissions with automatic expiration
-- **Conditional Access**: Access based on user location, device, or other conditions
+### File Operations
 
-#### Audit and Compliance
+```python
+def delete_file(self, file_path: str) -> bool:
+    """Delete a file."""
 
-**Comprehensive Audit Trail**:
-- **File Access Logging**: Detailed logs of all file access attempts
-- **Modification Tracking**: Complete history of file modifications
-- **Permission Changes**: Tracking of permission and access control changes
-- **System Events**: Logging of system-level events affecting files
+def move_file(self, source_path: str, destination_path: str) -> bool:
+    """Move a file from source to destination."""
+```
 
-**Regulatory Compliance**:
-- **GDPR Compliance**: Data protection and privacy compliance for EU users
-- **SOX Compliance**: Sarbanes-Oxley compliance for financial document retention
-- **French Regulations**: Compliance with French data protection and accounting laws
-- **Industry Standards**: Adherence to industry-specific compliance requirements
+**Move File Features:**
+- Creates destination directory if needed
+- Preserves file metadata
+- Handles cross-directory moves
+- Provides error handling and logging
 
-### Data Protection and Recovery
+## File Validation and Security
 
-#### Backup and Recovery
+### File Type Validation
 
-**Multi-Tier Backup Strategy**:
-- **Real-Time Backup**: Continuous backup of critical files
-- **Scheduled Backups**: Regular scheduled backups of all file data
-- **Incremental Backups**: Efficient incremental backup to minimize storage
-- **Geographic Distribution**: Backups stored in multiple geographic locations
+```python
+def validate_file_type(self, filename: str, allowed_extensions: List[str]) -> bool:
+    """Validate file type against allowed extensions."""
+```
 
-**Disaster Recovery**:
-- **Recovery Time Objectives**: Defined RTO for different file categories
-- **Recovery Point Objectives**: Defined RPO for minimal data loss
-- **Automated Recovery**: Automated recovery procedures for common failure scenarios
-- **Manual Recovery**: Detailed procedures for complex recovery scenarios
+**Supported File Types:**
+- **PDF**: Primary document format
+- **Images**: JPG, JPEG, PNG, TIFF, BMP, GIF
+- **Office**: DOC, DOCX, XLS, XLSX
+- **Text**: TXT, CSV
+- **Archives**: ZIP, RAR (for batch uploads)
 
-#### Data Integrity and Validation
+### Integrity Verification
 
-**Integrity Monitoring**:
-- **Checksum Verification**: Regular verification of file integrity using checksums
-- **Corruption Detection**: Automated detection of file corruption
-- **Repair Capabilities**: Automatic repair of minor file corruption
-- **Alerting System**: Immediate alerts for integrity issues
+The service uses SHA-256 hashing for file integrity:
 
-**Validation Processes**:
-- **File Format Validation**: Continuous validation of file format integrity
-- **Content Validation**: Verification of file content against expected formats
-- **Metadata Validation**: Validation of file metadata for consistency
-- **Cross-Reference Validation**: Validation of file relationships and references
+```python
+# Calculate file hash for integrity checking
+file_hash = hashlib.sha256(content).hexdigest()
+```
 
----
+Benefits:
+- Detect file corruption
+- Prevent duplicate uploads
+- Verify successful transfers
+- Audit trail maintenance
 
-## Performance and Scalability
+## Temporary File Management
 
-### High-Performance Architecture
+### Temporary File Creation
 
-#### Scalable Storage Infrastructure
+```python
+def get_temp_file_path(self, filename: str) -> Path:
+    """Get path for temporary file."""
+```
 
-**Horizontal Scaling**:
-- **Distributed Storage**: Files distributed across multiple storage nodes
-- **Load Balancing**: Intelligent load balancing across storage infrastructure
-- **Auto-Scaling**: Automatic scaling based on storage and processing demands
-- **Performance Monitoring**: Continuous monitoring of storage performance
+Creates unique temporary file paths for processing workflows.
 
-**Caching Strategy**:
-- **Multi-Level Caching**: Application, database, and CDN caching layers
-- **Intelligent Cache Management**: AI-driven cache optimization
-- **Cache Warming**: Predictive cache warming based on usage patterns
-- **Cache Invalidation**: Sophisticated cache invalidation strategies
+### Temporary File Cleanup
 
-#### Processing Optimization
+```python
+def cleanup_temp_files(self, older_than_hours: int = 24) -> int:
+    """Clean up temporary files older than specified hours."""
+```
 
-**Parallel Processing**:
-- **Concurrent Uploads**: Support for multiple simultaneous file uploads
-- **Parallel Processing**: Parallel processing of multiple files
-- **Queue Management**: Intelligent queue management for processing tasks
-- **Resource Allocation**: Dynamic resource allocation based on workload
+**Cleanup Features:**
+- Automatic removal of old temporary files
+- Configurable retention periods
+- Logging of cleanup operations
+- Error handling for locked files
 
-**Performance Metrics**:
-- **Upload Speed**: Monitoring and optimization of upload performance
-- **Processing Time**: Tracking of file processing times
-- **Storage Efficiency**: Monitoring of storage utilization and efficiency
-- **User Experience**: Tracking of user experience metrics
+## Storage Management
 
-### Integration and APIs
+### Directory Statistics
 
-#### RESTful API Interface
+```python
+def get_directory_stats(self) -> Dict[str, Any]:
+    """Get statistics for all subdirectories."""
+```
 
-**File Operations API**:
-- **Upload API**: Secure file upload with progress tracking
-- **Download API**: Efficient file download with resume capability
-- **Metadata API**: File metadata management and querying
-- **Search API**: Advanced file search and filtering capabilities
+Returns comprehensive storage statistics:
 
-**Batch Operations**:
-- **Bulk Upload**: Efficient bulk file upload operations
-- **Bulk Download**: Compressed bulk download capabilities
-- **Batch Processing**: Batch processing of multiple files
-- **Bulk Metadata Operations**: Efficient metadata operations on multiple files
+```json
+{
+  "base_directory": "/uploads",
+  "total_files": 1250,
+  "total_size_bytes": 5368709120,
+  "total_size_human": "5.0 GB",
+  "subdirectory_stats": {
+    "invoices": {
+      "file_count": 856,
+      "total_size": 3221225472,
+      "size_human": "3.0 GB",
+      "avg_file_size": 3762176
+    },
+    "bank_statements": {
+      "file_count": 124,
+      "total_size": 536870912,
+      "size_human": "512 MB",
+      "avg_file_size": 4330883
+    },
+    "receipts": {
+      "file_count": 203,
+      "total_size": 805306368,
+      "size_human": "768 MB",
+      "avg_file_size": 3966192
+    },
+    "payroll": {
+      "file_count": 45,
+      "total_size": 268435456,
+      "size_human": "256 MB",
+      "avg_file_size": 5965232
+    },
+    "general": {
+      "file_count": 22,
+      "total_size": 536870912,
+      "size_human": "512 MB",
+      "avg_file_size": 24403223
+    }
+  },
+  "last_updated": "2024-01-15T10:30:00Z"
+}
+```
 
-#### Webhook and Event System
+### Automated Cleanup
 
-**Event Notifications**:
-- **Upload Events**: Notifications for file upload completion
-- **Processing Events**: Notifications for file processing status changes
-- **Error Events**: Immediate notifications for file processing errors
-- **Quota Events**: Notifications for storage quota thresholds
+```python
+def cleanup_old_files(self, older_than_days: int = 30) -> int:
+    """Clean up files older than specified number of days."""
+```
 
-**Integration Hooks**:
-- **Processing Triggers**: Automatic triggering of processing pipelines
-- **Workflow Integration**: Integration with business workflow systems
-- **Third-Party Integration**: Hooks for third-party system integration
-- **Custom Webhooks**: Configurable webhooks for custom integrations
+**Cleanup Policy:**
+- Default retention: 30 days for processed files
+- Configurable retention periods per document type
+- Archive important documents before deletion
+- Comprehensive logging of cleanup operations
 
----
+**Cleanup Results:**
+```json
+{
+  "files_deleted": 45,
+  "space_freed_bytes": 1073741824,
+  "space_freed_human": "1.0 GB",
+  "directories_processed": [
+    "invoices",
+    "bank_statements",
+    "receipts",
+    "payroll",
+    "general",
+    "temp"
+  ],
+  "cleanup_timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
-## Monitoring and Analytics
+## MIME Type Detection
 
-### Performance Analytics
+The service provides intelligent MIME type detection:
 
-#### Usage Statistics
+```python
+import mimetypes
 
-**File Usage Metrics**:
-- **Upload Patterns**: Analysis of file upload patterns and trends
-- **Access Patterns**: Tracking of file access patterns and frequency
-- **Storage Growth**: Monitoring of storage growth and capacity planning
-- **User Behavior**: Analysis of user file management behavior
+# Automatic MIME type detection
+mime_type = file.content_type or mimetypes.guess_type(filename)[0]
+```
 
-**Performance Metrics**:
-- **Response Times**: Monitoring of API response times
-- **Throughput**: Tracking of file processing throughput
-- **Error Rates**: Monitoring of error rates and failure patterns
-- **Resource Utilization**: Tracking of system resource utilization
+**Supported MIME Types:**
+- `application/pdf`: PDF documents
+- `image/jpeg`, `image/png`: Image files
+- `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`: Excel files
+- `text/csv`: CSV files
+- `application/zip`: Archive files
 
-#### Predictive Analytics
+## Error Handling
 
-**Capacity Planning**:
-- **Storage Forecasting**: Predictive modeling for storage capacity requirements
-- **Performance Forecasting**: Prediction of performance bottlenecks
-- **Cost Optimization**: Analysis and optimization of storage costs
-- **Scaling Recommendations**: Automated recommendations for infrastructure scaling
+The File Service implements comprehensive error handling:
 
-**Usage Optimization**:
-- **Access Pattern Analysis**: Analysis of file access patterns for optimization
-- **Lifecycle Management**: Automated file lifecycle management based on usage
-- **Archival Recommendations**: Intelligent recommendations for file archival
-- **Cleanup Automation**: Automated cleanup of temporary and obsolete files
+```python
+class FileServiceError(Exception):
+    """Base exception for file service errors."""
 
-The File Service provides a comprehensive, enterprise-grade file management solution that ensures secure, efficient, and compliant handling of all financial documents while providing the scalability and performance required for high-volume accounting automation workflows. 
+class FileNotFoundError(FileServiceError):
+    """Raised when requested file doesn't exist."""
+
+class InvalidFileTypeError(FileServiceError):
+    """Raised when file type is not allowed."""
+
+class InsufficientStorageError(FileServiceError):
+    """Raised when storage space is insufficient."""
+```
+
+### Error Recovery
+
+- **Partial upload recovery**: Resume interrupted uploads
+- **Corruption detection**: Verify file integrity after operations
+- **Automatic retry**: Retry failed operations with exponential backoff
+- **Graceful degradation**: Continue operations despite individual failures
+
+## Performance Optimization
+
+### Async Operations
+
+All file operations support asynchronous execution:
+
+```python
+async def save_uploaded_file(...) -> Dict[str, Any]:
+    # Non-blocking file operations
+    content = await file.read()
+    
+    # Async file writing
+    with open(file_path, "wb") as f:
+        f.write(content)
+```
+
+### Memory Management
+
+- **Streaming uploads**: Handle large files without memory exhaustion
+- **Chunked processing**: Process files in manageable chunks
+- **Temporary file cleanup**: Automatic cleanup prevents disk overflow
+- **Memory monitoring**: Track memory usage during operations
+
+## Integration with Other Services
+
+### Database Integration
+
+File metadata is stored in MongoDB:
+
+```python
+# Store file information in database
+file_record = await db_service.store_document_upload(file_info)
+```
+
+### Processing Pipeline Integration
+
+Files flow seamlessly into the processing pipeline:
+
+```python
+# File upload triggers processing
+processing_id = await accounting_service.process_invoice(file_path)
+```
+
+### Cache Integration
+
+File metadata cached for fast access:
+
+```python
+# Cache file information
+await cache_service.cache_file_info(file_path, file_info)
+```
+
+## Service Initialization
+
+### Singleton Pattern
+
+```python
+# Global file service instance
+_file_service = None
+
+def get_file_service() -> FileService:
+    """Get singleton file service instance."""
+    global _file_service
+    if _file_service is None:
+        base_dir = os.environ.get("UPLOAD_BASE_DIR", "uploads")
+        _file_service = FileService(base_upload_dir=base_dir)
+    return _file_service
+```
+
+### Configuration
+
+Environment-based configuration:
+
+```python
+# Storage configuration
+UPLOAD_BASE_DIR = os.environ.get("UPLOAD_BASE_DIR", "uploads")
+MAX_FILE_SIZE = int(os.environ.get("MAX_FILE_SIZE", "52428800"))  # 50MB
+ALLOWED_EXTENSIONS = os.environ.get("ALLOWED_EXTENSIONS", "pdf,jpg,jpeg,png,xlsx,csv").split(",")
+
+# Cleanup configuration
+CLEANUP_RETENTION_DAYS = int(os.environ.get("CLEANUP_RETENTION_DAYS", "30"))
+TEMP_FILE_RETENTION_HOURS = int(os.environ.get("TEMP_FILE_RETENTION_HOURS", "24"))
+```

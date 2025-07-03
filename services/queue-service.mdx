@@ -1,0 +1,445 @@
+---
+title: "Queue Service"
+description: "RabbitMQ-based message queue service for asynchronous task processing in Textra"
+---
+
+
+The Queue Service provides robust, scalable message queuing capabilities for Textra's asynchronous processing workflows using RabbitMQ. It handles task distribution, result reporting, error management, and supports multiple specialized message types with intelligent routing and retry mechanisms.
+
+## Service Architecture
+
+### Core Components
+
+The Queue Service is built on **RabbitMQ** with comprehensive message handling:
+
+- **Topic Exchange**: Flexible routing based on task types
+- **Durable Queues**: Persistent message storage
+- **Dead Letter Queues**: Automatic failure handling
+- **Connection Management**: Robust connection handling with auto-reconnect
+- **Quality of Service**: Message prefetch and load balancing
+
+```python
+class RabbitMQService:
+    def __init__(
+        self, 
+        connection_string: str = None,
+        exchange_name: str = "textra_exchange",
+    ):
+        self.connection_string = connection_string or os.environ.get(
+            "RABBITMQ_URL", 
+            "amqp://textra:textra@localhost:5672/"
+        )
+        self.exchange_name = exchange_name
+```
+
+### Queue Architecture
+
+The service manages **3 primary queues**:
+
+1. **task_queue**: Main processing queue for incoming tasks
+2. **result_queue**: Results and status updates
+3. **dead_letter_queue**: Failed messages for analysis and retry
+
+### Supported Message Types
+
+The Queue Service handles **8 specialized message types**:
+
+1. **InvoiceProcessingMessage**: Single invoice processing
+2. **BatchProcessingMessage**: Multi-invoice batch processing
+3. **ExportAccountingMessage**: Accounting data export
+4. **FinancialDocumentProcessingMessage**: Financial document analysis
+5. **IntelligentJournalGenerationMessage**: AI-powered journal creation
+6. **BankStatementProcessingMessage**: Bank statement processing
+7. **PayrollProcessingMessage**: Payroll document processing
+8. **ExpenseReceiptProcessingMessage**: Expense receipt processing
+
+## Core Methods
+
+### Service Initialization
+
+```python
+async def initialize(self):
+    """Initialize RabbitMQ connection and channel."""
+```
+
+**Initialization Process:**
+1. Establishes robust connection with timeout and heartbeat
+2. Creates channel with QoS settings (prefetch_count=10)
+3. Declares topic exchange for flexible routing
+4. Sets up all queues with dead letter handling
+5. Configures queue bindings with routing patterns
+
+**Queue Configuration:**
+```python
+# Task queue with dead letter handling
+self.task_queue = await self.channel.declare_queue(
+    self.task_queue_name,
+    durable=True,
+    arguments={
+        "x-dead-letter-exchange": self.exchange_name,
+        "x-dead-letter-routing-key": "dlq"
+    }
+)
+
+# Queue bindings
+await self.task_queue.bind(self.exchange, routing_key="task.*")
+await self.result_queue.bind(self.exchange, routing_key="result.*")
+await self.dlq_queue.bind(self.exchange, routing_key="dlq")
+```
+
+### Connection Management
+
+```python
+def _on_reconnect(self, connection):
+    """Handle connection reconnect event."""
+
+def _on_close(self, connection, exception):
+    """Handle connection close event."""
+
+async def close(self):
+    """Close RabbitMQ connection."""
+```
+
+Features robust connection handling:
+- Automatic reconnection on connection loss
+- Connection health monitoring
+- Graceful shutdown procedures
+- Event-based connection state management
+
+## Task Publishing
+
+### Publish Task
+
+```python
+async def publish_task(self, task: TaskMessage) -> str:
+    """Publish a task message to the queue."""
+```
+
+**Publishing Process:**
+1. Generates unique task ID if not provided
+2. Creates routing key based on task type (`task.{task_type}`)
+3. Serializes task message to JSON
+4. Sets message properties for durability and priority
+5. Publishes to exchange with appropriate routing
+
+**Message Properties:**
+```python
+message = Message(
+    body=message_body,
+    content_type='application/json',
+    delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+    priority=task.priority,
+    message_id=task.task_id,
+    timestamp=task.created_at,
+    headers={
+        'task_type': task.task_type,
+        'user_id': getattr(task, 'user_id', None),
+        'retry_count': getattr(task, 'retry_count', 0)
+    }
+)
+```
+
+### Routing Key Patterns
+
+The service uses intelligent routing based on task types:
+
+- `task.invoice_processing`: Single invoice processing
+- `task.batch_processing`: Batch operations
+- `task.export_accounting`: Export tasks
+- `task.financial_document_processing`: Document analysis
+- `result.success`: Successful task completion
+- `result.failure`: Task failure notifications
+- `dlq`: Dead letter queue for failed messages
+
+## Result Publishing
+
+### Publish Result
+
+```python
+async def publish_result(self, result: TaskResult) -> None:
+    """Publish a task result to the result queue."""
+```
+
+**Result Types:**
+- Success results with processed data
+- Progress updates with completion percentage
+- Error notifications with detailed error information
+- Status changes for task tracking
+
+**Example Result Message:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "SUCCESS",
+  "result": {
+    "invoice_id": "INV-12345678-231201",
+    "processing_complete": true,
+    "export_files": ["/storage/exports/INV-12345678-231201.csv"]
+  },
+  "processing_time": 12.45,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+## Message Consumption
+
+### Consume Tasks
+
+```python
+async def consume_tasks(self, callback: Callable[[TaskMessage], Any]) -> None:
+    """Start consuming tasks from the queue."""
+```
+
+**Consumption Features:**
+- Asynchronous message handling
+- Automatic message acknowledgment
+- Type-specific message deserialization
+- Error handling and dead letter routing
+- Connection recovery on failures
+
+**Message Handler:**
+```python
+async def _message_handler(message: AbstractIncomingMessage) -> None:
+    """Handle incoming task messages."""
+    try:
+        # Parse message body
+        task_data = json.loads(message.body.decode('utf-8'))
+        
+        # Get task type and convert to specific message type
+        task_type = task_data.get('task_type')
+        if task_type in self.TASK_TYPE_MAP:
+            task_class = self.TASK_TYPE_MAP[task_type]
+            task = task_class(**task_data)
+        else:
+            task = TaskMessage(**task_data)
+        
+        # Execute callback
+        await callback(task)
+        
+        # Acknowledge message
+        await message.ack()
+        
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}")
+        # Reject message and send to DLQ
+        await message.reject(requeue=False)
+```
+
+## Dead Letter Queue Management
+
+### Publish to Dead Letter Queue
+
+```python
+async def publish_to_dlq(self, message: dict, error: str) -> None:
+    """Publish a failed message to the dead letter queue."""
+```
+
+**DLQ Features:**
+- Automatic routing of failed messages
+- Error context preservation
+- Retry attempt tracking
+- Message analysis and debugging support
+
+**DLQ Message Structure:**
+```json
+{
+  "original_message": {...},
+  "error": "Detailed error description",
+  "retry_count": 3,
+  "failed_at": "2024-01-15T10:30:00Z",
+  "routing_key": "task.invoice_processing",
+  "failure_reason": "timeout|parsing_error|processing_error"
+}
+```
+
+## Task Message Types
+
+### Invoice Processing Message
+
+```python
+class InvoiceProcessingMessage(TaskMessage):
+    invoice_id: str
+    file_path: str
+    processing_id: str
+    export_formats: Optional[List[str]] = ["csv", "json"]
+    auto_export: bool = True
+    llm_provider: Optional[str] = None
+```
+
+### Batch Processing Message
+
+```python
+class BatchProcessingMessage(TaskMessage):
+    file_paths: List[str]
+    processing_ids: List[str]
+    max_workers: Optional[int] = 3
+    export_formats: Optional[List[str]] = ["csv", "json"]
+    batch_name: Optional[str] = None
+```
+
+### Export Accounting Message
+
+```python
+class ExportAccountingMessage(TaskMessage):
+    invoice_id: str
+    export_formats: List[str]
+    export_path: Optional[str] = None
+    base_filename: Optional[str] = None
+```
+
+### Financial Document Processing Message
+
+```python
+class FinancialDocumentProcessingMessage(TaskMessage):
+    document_id: str
+    document_type: str
+    processing_options: Optional[Dict[str, Any]] = {}
+    ai_analysis_required: bool = True
+```
+
+## Quality of Service (QoS)
+
+### Message Prefetch
+
+The service implements QoS controls for optimal performance:
+
+```python
+# Set QoS with prefetch count
+await self.channel.set_qos(prefetch_count=10)
+```
+
+**QoS Benefits:**
+- Load balancing across multiple workers
+- Memory usage optimization
+- Prevents worker overload
+- Ensures fair task distribution
+
+### Message Priorities
+
+Tasks support priority-based processing:
+
+```python
+class TaskPriority:
+    LOW = 1
+    NORMAL = 5
+    HIGH = 7
+    CRITICAL = 10
+```
+
+High-priority tasks are processed before lower-priority ones, enabling critical invoice processing to take precedence.
+
+## Error Handling and Retry Logic
+
+### Automatic Retry
+
+Failed messages are automatically retried with exponential backoff:
+
+```python
+# Retry configuration in message headers
+headers = {
+    'retry_count': current_retry + 1,
+    'max_retries': 3,
+    'backoff_multiplier': 2,
+    'initial_delay': 5
+}
+```
+
+### Failure Categories
+
+The service handles different failure types:
+
+- **Temporary failures**: Network issues, service unavailability
+- **Parsing errors**: Invalid message format or missing fields
+- **Processing errors**: Business logic failures
+- **Timeout errors**: Tasks exceeding maximum execution time
+
+## Monitoring and Metrics
+
+### Queue Metrics
+
+The service provides comprehensive monitoring:
+
+```python
+queue_metrics = {
+    "queue_depths": {
+        "task_queue": 45,
+        "result_queue": 2,
+        "dead_letter_queue": 3
+    },
+    "message_rates": {
+        "publish_rate": 150.5,
+        "consume_rate": 148.2,
+        "error_rate": 2.3
+    },
+    "connection_status": "connected",
+    "channel_count": 3,
+    "consumer_count": 5
+}
+```
+
+### Performance Monitoring
+
+- **Message throughput**: Track publish/consume rates
+- **Queue depth monitoring**: Prevent queue overflow
+- **Error rate tracking**: Identify systemic issues
+- **Connection health**: Monitor connection stability
+
+## Service Initialization
+
+### Singleton Pattern
+
+```python
+# Global queue service instance
+_queue_service = None
+
+async def get_queue_service() -> RabbitMQService:
+    """Get singleton queue service instance."""
+    global _queue_service
+    if _queue_service is None:
+        _queue_service = RabbitMQService()
+        await _queue_service.initialize()
+    return _queue_service
+```
+
+### Configuration
+
+Environment-based configuration:
+
+```python
+# RabbitMQ connection
+RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://textra:textra@localhost:5672/")
+
+# Exchange configuration
+EXCHANGE_NAME = os.environ.get("EXCHANGE_NAME", "textra_exchange")
+
+# Queue configuration
+TASK_QUEUE = os.environ.get("TASK_QUEUE", "task_queue")
+RESULT_QUEUE = os.environ.get("RESULT_QUEUE", "result_queue")
+DLQ_QUEUE = os.environ.get("DLQ_QUEUE", "dead_letter_queue")
+```
+
+## Integration with Other Services
+
+### Task Manager Integration
+
+The Queue Service works closely with the Task Manager:
+
+```python
+# Task Manager publishes tasks
+await queue_service.publish_task(task_message)
+
+# Task Manager consumes tasks
+await queue_service.consume_tasks(task_manager.process_task)
+```
+
+### Cache Service Integration
+
+Results are cached after processing:
+
+```python
+# Cache task results
+await cache_service.cache_task_result(task_id, result)
+
+# Publish result to queue
+await queue_service.publish_result(task_result)
+```

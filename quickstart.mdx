@@ -1,97 +1,272 @@
 ---
-title: 'Quickstart'
-description: 'Start building awesome documentation in under 5 minutes'
+title: 'Quick Start Guide'
+description: 'Get started with Textra accounting automation - process your first invoice in minutes'
 ---
 
-## Setup your development
+Welcome to Textra! This guide will walk you through processing your first invoice using our intelligent accounting automation platform. In just a few minutes, you'll see how Textra transforms raw invoices into compliant French accounting entries.
 
-Learn how to update your docs locally and deploy them to the public.
+## What is Textra?
 
-### Edit and preview
+Textra is an AI-powered accounting automation platform that processes financial documents through a sophisticated 5-phase pipeline:
+
+1. **Data Extraction** - OCR and LLM extract structured data from documents
+2. **Account Imputation** - AI maps transactions to French PCG accounts 
+3. **Journal Generation** - Creates balanced double-entry journal entries
+4. **Validation** - Ensures compliance and accuracy
+5. **Export** - Outputs in multiple formats (FEC, CSV, XML, Sage)
+
+## Prerequisites
 
 <AccordionGroup>
-  <Accordion icon="github" title="Clone your docs locally">
-    During the onboarding process, we created a repository on your Github with
-    your docs content. You can find this repository on our
-    [dashboard](https://dashboard.mintlify.com). To clone the repository
-    locally, follow these
-    [instructions](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
-    in your terminal.
+  <Accordion icon="server" title="System Requirements">
+    **Backend Requirements:**
+    - Python 3.11+
+    - MongoDB 4.4+
+    - Redis 6.0+
+    - RabbitMQ 3.8+
+    
+    **Frontend Requirements:**
+    - Node.js 18+
+    - npm 
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Preview changes">
-    Previewing helps you make sure your changes look as intended. We built a
-    command line interface to render these changes locally. 
-    1. Install the
-    [Mintlify CLI](https://www.npmjs.com/package/mintlify) to preview the
-    documentation changes locally with this command: ``` npm i -g mintlify ```
-    2. Run the following command at the root of your documentation (where
-    `docs.json` is): ``` mintlify dev ```
-    <Note>
-      If you’re currently using the legacy ```mint.json``` configuration file, please update the Mintlify CLI:
-
-
-      ```npm i -g mintlify@latest```
-      And run the new upgrade command in your docs repository:
-
-      ```mintlify upgrade```
-      You should now be using the new ```docs.json``` configuration file. Feel free to delete the ```mint.json``` file from your repository.
-    </Note>
+  
+  <Accordion icon="key" title="API Access">
+    You'll need:
+    - Textra account credentials
+    - API key (for programmatic access)
+    
   </Accordion>
 </AccordionGroup>
 
-### Deploy your changes
+## Setup and Installation
+
+### 1. Clone and Setup Backend
+
+<CodeGroup>
+```bash Terminal
+# Clone the repository
+git clone https://github.com/el-Badr07/Textra.git
+cd textra
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+```bash Docker
+# Using Docker Compose
+docker-compose up -d
+
+# This starts:
+# - MongoDB database
+# - Redis cache
+# - RabbitMQ message broker
+# - Textra backend services
+```
+</CodeGroup>
+
+### 2. Configure Environment
+
+Create a `.env` file in the project root:
+
+```bash .env
+# Database Configuration
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DB_NAME=textra_accounting
+
+# Redis Configuration  
+REDIS_URL=redis://localhost:6379
+
+# RabbitMQ Configuration
+RABBITMQ_URL=amqp://localhost:5672
+
+# LLM Provider Configuration
+GROQ_API_KEY=your_groq_api_key
+GEMINI_API_KEY=your_gemini_api_key
+
+# File Storage
+UPLOAD_FOLDER=./uploads
+STORAGE_FOLDER=./storage
+
+# Security
+SECRET_KEY=your_secret_key_here
+```
+
+### 3. Start the Services
+
+<Tabs>
+  <Tab title="Development">
+    ```bash
+    # Start backend API (port 8001)
+    uvicorn src.main:app --reload --host 0.0.0.0 --port 8001
+    
+    # Start frontend (separate terminal)
+    cd frontend
+    npm install
+    npm run dev
+    
+    # Start a worker process (separate terminal)
+    python -m src.message_worker.run_worker
+    ```
+  </Tab>
+  
+  <Tab title="Production">
+    ```bash
+    # Using Docker for production
+    docker-compose -f docker-compose.yml up -d
+    
+    # If you prefer manual processes
+    uvicorn src.main:app --host 0.0.0.0 --port 8001 &
+    python -m src.message_worker.run_worker 
+    ```
+  </Tab>
+</Tabs>
+
+## Process Your First Invoice
+
+### Step 1: Upload an Invoice
 
 <AccordionGroup>
-
-<Accordion icon="message-bot" title="Install our Github app">
-  Our Github app automatically deploys your changes to your docs site, so you
-  don't need to manage deployments yourself. You can find the link to install on
-  your [dashboard](https://dashboard.mintlify.com). Once the bot has been
-  successfully installed, there should be a check mark next to the commit hash
-  of the repo.
-</Accordion>
-<Accordion icon="rocket" title="Push your changes">
-  [Commit and push your changes to
-  Git](https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository#about-git-push)
-  for your changes to update in your docs site. If you push and don't see that
-  the Github app successfully deployed your changes, you can also manually
-  update your docs through our [dashboard](https://dashboard.mintlify.com).
-</Accordion>
-
+  <Accordion icon="upload" title="Web Interface">
+    1. Navigate to `http://localhost:3000` 
+    2. Click **"Upload Invoice"**
+    3. Select a PDF or image file
+    4. Wait for upload confirmation
+  </Accordion>
+  
+  <Accordion icon="code" title="API Upload">
+    ```bash
+    curl -X POST "http://localhost:8001/api/accounting/invoices/upload" \
+      -H "Content-Type: multipart/form-data" \
+      -F "file=@/path/to/invoice.pdf" \
+      -F "user_id=your_user_id"
+    ```
+    
+    **Response:**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "file_id": "65a1b2c3d4e5f6789",
+        "filename": "invoice.pdf",
+        "upload_path": "/uploads/invoices/invoice_001.pdf"
+      }
+    }
+    ```
+  </Accordion>
 </AccordionGroup>
 
-## Update your docs
+### Step 2: Process the Invoice
 
-Add content directly in your files with MDX syntax and React components. You can use any of our components, or even build your own.
+Trigger the 5-phase processing pipeline:
 
+<CodeGroup>
+```bash Synchronous Processing
+curl -X POST "http://localhost:8001/api/accounting/invoices/process" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "/uploads/invoices/invoice_001.pdf",
+    "user_id": "your_user_id",
+    "processing_options": {
+      "extract_line_items": true,
+      "validate_vat": true,
+      "generate_journal": true
+    }
+  }'
+```
+
+```bash Asynchronous Processing
+curl -X POST "http://localhost:8001/api/accounting/invoices/process-async" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "/uploads/invoices/invoice_001.pdf",
+    "user_id": "your_user_id"
+  }'
+```
+</CodeGroup>
+
+**Processing Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "task_id": "task_65a1b2c3d4e5f6789",
+    "status": "processing",
+    "estimated_completion": "2024-01-15T10:32:00Z"
+  }
+}
+```
+
+### Step 3: Monitor Processing Status
+
+Check the processing progress:
+
+```bash
+curl "http://localhost:8001/api/accounting/tasks/task_65a1b2c3d4e5f6789/status"
+```
+
+**Status Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "task_id": "task_65a1b2c3d4e5f6789",
+    "status": "completed",
+    "progress": 100,
+    "current_phase": "export",
+    "results": {
+      "extraction_confidence": 0.95,
+      "pcg_accounts_mapped": 8,
+      "journal_entries_created": 3,
+      "validation_passed": true
+    }
+  }
+}
+```
+
+### Step 4: Retrieve Results
+
+Get the processed accounting data:
+
+<CodeGroup>
+```bash JSON Export
+curl "http://localhost:8001/api/accounting/tasks/task_65a1b2c3d4e5f6789/results?format=json"
+```
+
+```bash FEC Export
+curl "http://localhost:8001/api/accounting/tasks/task_65a1b2c3d4e5f6789/results?format=fec" \
+  --output invoice_journal.fec
+```
+
+```bash Sage Export
+curl "http://localhost:8001/api/accounting/tasks/task_65a1b2c3d4e5f6789/results?format=sage" \
+  --output invoice_sage.csv
+```
+</CodeGroup>
+
+## Next Steps
 <CardGroup>
-
-<Card title="Add Content With MDX" icon="file" href="/essentials/markdown">
-  Add content to your docs with MDX syntax.
-</Card>
-
-<Card
-  title="Add Code Blocks"
-  icon="square-code"
-  href="/essentials/code"
->
-  Add code directly to your docs with syntax highlighting.
-</Card>
-
-<Card
-  title="Add Images"
-  icon="image"
-  href="/essentials/images"
->
-  Add images to your docs to make them more engaging.
-</Card>
-
-<Card
-  title="Add Custom Components"
-  icon="puzzle-piece"
-  href="/essentials/reusable-snippets"
->
-  Add templates to your docs to make them more reusable.
-</Card>
-
+  <Card title="Batch Processing" icon="layer-group" href="/api-reference/accounting">
+    Process multiple invoices simultaneously for efficiency
+  </Card>
+  
+  <Card title="Voice Interface" icon="microphone" href="/api-reference/voice">
+    Use voice commands to process documents and ask questions
+  </Card>
+  
+  <Card title="AI Conversations" icon="comments" href="/api-reference/conversations">
+    Chat with specialized accounting agents for analysis and insights
+  </Card>
+  
+  <Card title="Advanced Configuration" icon="gear" href="/development">
+    Customize processing rules, PCG mappings, and validation logic
+  </Card>
 </CardGroup>
+
+- Try the **Batch Processing** endpoint to process many invoices in parallel.
+- Explore the **Voice API** to control the pipeline via LiveKit voice rooms.
+- Dive into the **Development Guide** for customization, deployment, and scaling details.
+

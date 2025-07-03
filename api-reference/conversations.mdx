@@ -3,28 +3,48 @@ title: "Conversations API Reference"
 description: "Complete API reference for Textra's multi-conversation AI chat system with specialized accounting agents"
 ---
 
-# Conversations API Reference
-
-The Conversations API powers Textra's sophisticated multi-conversation chat interface, enabling users to maintain multiple simultaneous conversations with specialized AI agents while providing intelligent conversation management, context preservation, and seamless integration with the accounting automation pipeline.
+The Conversations API powers Textra's sophisticated multi-conversation chat interface, enabling users to maintain multiple simultaneous conversations with specialized AI agents. The system provides intelligent conversation management, context preservation, real-time streaming responses, and seamless integration with the accounting automation pipeline.
 
 ## System Architecture
 
 ### Multi-Agent Chat System
 
-The Conversations API is built around a **team-based AI architecture** with specialized agents:
+The Conversations API is built around an **Agno-based AI architecture** with specialized agents:
 
-- **Invoice Retrieval Agent**: Database search and document discovery
-- **Invoice QA Agent**: Document content analysis using RAG (Retrieval-Augmented Generation)
+- **MongoDB Agent**: Direct database queries and analytics through MCP tools
 - **Calculation Agent**: Financial calculations and analysis
-- **MongoDB Agent**: Direct database queries and analytics
+- **Retrieval Agent**: Database search and document discovery
 
 ### Key Features
 
-- **Parallel Conversations**: Multiple simultaneous conversation threads
-- **Context Preservation**: Intelligent conversation memory and history
-- **Real-Time Streaming**: Live message delivery with typing indicators
-- **Agent Routing**: Automatic routing to appropriate specialized agents
-- **Document Integration**: Seamless integration with invoice processing pipeline
+- **User-Scoped Conversations**: All endpoints are user-specific for security and organization
+- **Context Preservation**: MongoDB-based memory and conversation history
+- **Real-Time Streaming**: Server-sent events for live message delivery
+- **File Integration**: PDF upload and knowledge base integration for RAG
+- **Agent Memory**: Persistent agent memory across conversations
+
+---
+## Agent Integration
+
+The conversation system integrates with Agno agents providing:
+
+**Agent Configuration:**
+- **Model**: Gemini 2.0 Flash for intelligent responses
+- **Memory**: MongoDB-based persistent memory across conversations
+- **Storage**: MongoDB storage for session management
+- **Tools**: MCP (Model Context Protocol) tools for database access
+
+**Agent Capabilities:**
+- **Agentic Memory**: Intelligent memory management across sessions
+- **Session Summaries**: Automatic conversation summarization
+- **Knowledge Base**: PDF document integration for RAG responses
+- **Database Access**: Direct MongoDB querying through MCP tools
+
+**Knowledge Base Features:**
+- **Vector Storage**: ChromaDB with conversation-specific collections
+- **Embeddings**: Ollama mxbai-embed-large for semantic search
+- **Document Processing**: Automatic PDF processing and indexing
+- **Context Integration**: Documents are accessible during agent responses
 
 ---
 
@@ -32,25 +52,19 @@ The Conversations API is built around a **team-based AI architecture** with spec
 
 ### Create New Conversation
 
-Start a new conversation thread with optional context initialization.
+Create a new conversation for a specific user.
 
 ```http
-POST /api/conversations
+POST /users/{user_id}/conversations
 ```
+
+**Path Parameters:**
+- `user_id` (string): Unique identifier for the user
 
 **Request Body:**
 ```json
 {
-  "title": "Invoice Analysis - December 2023",
-  "initial_context": {
-    "document_ids": ["INV-123", "INV-124"],
-    "conversation_type": "invoice_analysis",
-    "user_preferences": {
-      "language": "french",
-      "detail_level": "comprehensive"
-    }
-  },
-  "agents_enabled": ["invoice_qa", "calculation", "retrieval"]
+  "title": "Invoice Analysis - December 2023"
 }
 ```
 
@@ -58,59 +72,91 @@ POST /api/conversations
 ```json
 {
   "conversation_id": "conv-uuid-here",
-  "title": "Invoice Analysis - December 2023",
-  "created_at": "2023-12-01T10:30:00Z",
-  "status": "active",
-  "available_agents": ["invoice_qa", "calculation", "retrieval"],
-  "context": {
-    "document_ids": ["INV-123", "INV-124"],
-    "conversation_type": "invoice_analysis"
-  }
+  "status": "created"
 }
 ```
 
-### Get All Conversations
+### List User Conversations
 
-Retrieve user's conversations with filtering and pagination.
+Retrieve all conversations for a user with filtering and pagination.
 
 ```http
-GET /api/conversations
+GET /users/{user_id}/conversations
 ```
 
+**Path Parameters:**
+- `user_id` (string): Unique identifier for the user
+
 **Query Parameters:**
-- `limit`: Number of conversations to return (default: 20, max: 100)
-- `skip`: Number of conversations to skip for pagination
-- `status`: Filter by status (active, archived, completed)
-- `conversation_type`: Filter by type (invoice_analysis, general_chat, document_review)
-- `sort_by`: Sort field (created_at, updated_at, title)
-- `sort_order`: Sort direction (-1 for desc, 1 for asc)
-- `search`: Search in conversation titles and recent messages
+- `include_archived` (boolean, default: false): Include archived conversations
+- `limit` (integer, default: 50, max: 100): Maximum number of conversations to return
+- `offset` (integer, default: 0): Number of conversations to skip
+
+**Response:**
+```json
+[
+  {
+    "id": "conv-uuid-1",
+    "user_id": "user-123",
+    "title": "Invoice Analysis - December 2023",
+    "message_count": 15,
+    "created_at": "2023-12-01T10:30:00Z",
+    "updated_at": "2023-12-01T15:45:00Z",
+    "is_archived": false,
+    "last_message_preview": "The total VAT amount for these invoices is €2,400.00"
+  }
+]
+```
+
+### Search Conversations
+
+Search conversations by title and content for a specific user.
+
+```http
+GET /users/{user_id}/conversations/search
+```
+
+**Path Parameters:**
+- `user_id` (string): Unique identifier for the user
+
+**Query Parameters:**
+- `q` (string, required): Search query
+- `limit` (integer, default: 20, max: 50): Maximum number of results
+- `offset` (integer, default: 0): Number of results to skip
+
+**Response:**
+```json
+[
+  {
+    "id": "conv-uuid-1",
+    "user_id": "user-123",
+    "title": "Invoice Analysis - December 2023",
+    "message_count": 15,
+    "created_at": "2023-12-01T10:30:00Z",
+    "updated_at": "2023-12-01T15:45:00Z",
+    "is_archived": false,
+    "last_message_preview": "Found 8 invoices matching your criteria..."
+  }
+]
+```
+
+### Get User Statistics
+
+Get conversation statistics for a user.
+
+```http
+GET /users/{user_id}/conversations/stats
+```
 
 **Response:**
 ```json
 {
-  "conversations": [
-    {
-      "conversation_id": "conv-uuid-1",
-      "title": "Invoice Analysis - December 2023",
-      "status": "active",
-      "created_at": "2023-12-01T10:30:00Z",
-      "updated_at": "2023-12-01T15:45:00Z",
-      "message_count": 15,
-      "last_message": {
-        "content": "The total VAT amount for these invoices is €2,400.00",
-        "sender": "calculation_agent",
-        "timestamp": "2023-12-01T15:45:00Z"
-      },
-      "context": {
-        "document_count": 3,
-        "conversation_type": "invoice_analysis"
-      }
-    }
-  ],
-  "total_count": 25,
-  "has_more": true,
-  "next_skip": 20
+  "total_conversations": 25,
+  "active_conversations": 20,
+  "archived_conversations": 5,
+  "total_messages": 847,
+  "avg_messages_per_conversation": 33.9,
+  "last_activity": "2023-12-01T15:45:00Z"
 }
 ```
 
@@ -119,76 +165,110 @@ GET /api/conversations
 Retrieve complete conversation details including message history.
 
 ```http
-GET /api/conversations/{conversation_id}
+GET /users/{user_id}/conversations/{conversation_id}
 ```
 
+**Path Parameters:**
+- `user_id` (string): Unique identifier for the user
+- `conversation_id` (string): Unique identifier for the conversation
+
 **Query Parameters:**
-- `include_messages`: Include message history (default: true)
-- `message_limit`: Limit number of messages returned (default: 50)
-- `message_offset`: Offset for message pagination
+- `bypass_cache` (boolean, default: false): Bypass cache and fetch fresh data
 
 **Response:**
 ```json
 {
-  "conversation_id": "conv-uuid-1",
+  "id": "conv-uuid-1",
+  "user_id": "user-123",
   "title": "Invoice Analysis - December 2023",
-  "status": "active",
-  "created_at": "2023-12-01T10:30:00Z",
-  "updated_at": "2023-12-01T15:45:00Z",
-  "context": {
-    "document_ids": ["INV-123", "INV-124"],
-    "conversation_type": "invoice_analysis",
-    "user_preferences": {
-      "language": "french",
-      "detail_level": "comprehensive"
-    }
-  },
   "messages": [
     {
-      "message_id": "msg-uuid-1",
+      "id": "msg-uuid-1",
+      "role": "user",
       "content": "Please analyze the VAT amounts in these invoices",
-      "sender": "user",
-      "timestamp": "2023-12-01T15:40:00Z",
-      "metadata": {
-        "user_id": "user-123"
-      }
+      "created_at": "2023-12-01T15:40:00Z"
     },
     {
-      "message_id": "msg-uuid-2",
+      "id": "msg-uuid-2",
+      "role": "assistant", 
       "content": "I'll analyze the VAT amounts in the invoices you've referenced. Let me examine each one...",
-      "sender": "calculation_agent",
-      "timestamp": "2023-12-01T15:45:00Z",
-      "metadata": {
-        "agent_type": "calculation",
-        "processing_time": 3.2,
-        "confidence": 0.95,
-        "documents_analyzed": ["INV-123", "INV-124"]
-      }
+      "created_at": "2023-12-01T15:45:00Z"
     }
   ],
-  "message_count": 15,
-  "available_agents": ["invoice_qa", "calculation", "retrieval"]
+  "created_at": "2023-12-01T10:30:00Z",
+  "updated_at": "2023-12-01T15:45:00Z",
+  "is_archived": false,
+  "metadata": {},
+  "file_paths": [
+    "storage/uploads/conversations/conv-uuid-1/invoice_batch.pdf"
+  ]
 }
 ```
 
-### Update Conversation
+### Update Conversation Title
 
-Update conversation properties like title, status, or context.
+Update the title of a conversation.
 
 ```http
-PATCH /api/conversations/{conversation_id}
+PUT /users/{user_id}/conversations/{conversation_id}/title
 ```
 
 **Request Body:**
 ```json
 {
-  "title": "Updated Invoice Analysis - Q4 2023",
-  "status": "archived",
-  "context": {
-    "document_ids": ["INV-123", "INV-124", "INV-125"],
-    "conversation_type": "invoice_analysis",
-    "notes": "Completed analysis of Q4 invoices"
-  }
+  "title": "Updated Invoice Analysis - Q4 2023"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "updated",
+  "title": "Updated Invoice Analysis - Q4 2023"
+}
+```
+
+### Archive Conversation
+
+Archive a conversation (moves it out of active list).
+
+```http
+POST /users/{user_id}/conversations/{conversation_id}/archive
+```
+
+**Response:**
+```json
+{
+  "id": "conv-uuid-1",
+  "user_id": "user-123",
+  "title": "Invoice Analysis - December 2023",
+  "messages": [...],
+  "created_at": "2023-12-01T10:30:00Z",
+  "updated_at": "2023-12-01T16:00:00Z",
+  "is_archived": true,
+  "metadata": {}
+}
+```
+
+### Unarchive Conversation
+
+Restore an archived conversation to active status.
+
+```http
+DELETE /users/{user_id}/conversations/{conversation_id}/archive
+```
+
+**Response:**
+```json
+{
+  "id": "conv-uuid-1",
+  "user_id": "user-123",
+  "title": "Invoice Analysis - December 2023",
+  "messages": [...],
+  "created_at": "2023-12-01T10:30:00Z",
+  "updated_at": "2023-12-01T16:05:00Z",
+  "is_archived": false,
+  "metadata": {}
 }
 ```
 
@@ -197,15 +277,14 @@ PATCH /api/conversations/{conversation_id}
 Permanently delete a conversation and all its messages.
 
 ```http
-DELETE /api/conversations/{conversation_id}
+DELETE /users/{user_id}/conversations/{conversation_id}
 ```
 
 **Response:**
 ```json
 {
   "message": "Conversation deleted successfully",
-  "conversation_id": "conv-uuid-1",
-  "deleted_at": "2023-12-01T16:00:00Z"
+  "status": "deleted"
 }
 ```
 
@@ -213,442 +292,298 @@ DELETE /api/conversations/{conversation_id}
 
 ## Message Management
 
-### Send Message
+### Add Message to Conversation
 
-Send a message in a conversation and receive AI agent response.
+Add a new message to an existing conversation.
 
 ```http
-POST /api/conversations/{conversation_id}/messages
+POST /users/{user_id}/conversations/{conversation_id}/messages
 ```
 
 **Request Body:**
 ```json
 {
-  "content": "What is the total amount of all invoices from Supplier ABC in November?",
-  "message_type": "user_query",
-  "preferred_agent": "retrieval",
-  "context": {
-    "referenced_documents": [],
-    "query_parameters": {
-      "date_range": ["2023-11-01", "2023-11-30"],
-      "vendor_filter": "Supplier ABC"
-    }
-  }
+  "role": "user",
+  "content": "What is the total amount for all invoices this month?"
 }
 ```
 
 **Response:**
 ```json
 {
-  "message_id": "msg-uuid-new",
-  "conversation_id": "conv-uuid-1",
-  "content": "What is the total amount of all invoices from Supplier ABC in November?",
-  "sender": "user",
-  "timestamp": "2023-12-01T16:05:00Z",
-  "status": "sent",
-  "agent_response": {
-    "agent_type": "retrieval",
-    "status": "processing",
-    "estimated_response_time": 5
-  }
+  "message_id": "msg-uuid-123",
+  "status": "added"
 }
 ```
 
-### Get Message History
+### Get Conversation Messages
 
-Retrieve message history with pagination and filtering.
+Retrieve messages for a conversation with pagination.
 
 ```http
-GET /api/conversations/{conversation_id}/messages
+GET /users/{user_id}/conversations/{conversation_id}/messages
 ```
 
 **Query Parameters:**
-- `limit`: Number of messages to return (default: 50, max: 200)
-- `offset`: Message offset for pagination
-- `sender_filter`: Filter by sender (user, agent_type)
-- `date_from`: Filter messages from date
-- `date_to`: Filter messages to date
-- `search`: Search in message content
+- `limit` (integer, default: 50, max: 100): Maximum number of messages to return
+- `before_message_id` (string, optional): Get messages before this message ID
 
-### Stream Messages (WebSocket)
-
-Real-time message streaming for live conversation updates.
-
-```websocket
-ws://api.textra.com/api/conversations/{conversation_id}/stream
-```
-
-**Connection Parameters:**
-- `Authorization`: Bearer token for authentication
-- `user_id`: User identifier for message attribution
-
-**Message Types:**
-- `message.new`: New message in conversation
-- `message.typing`: Agent typing indicator
-- `message.stream`: Streaming message content (for long responses)
-- `message.complete`: Message streaming complete
-- `conversation.updated`: Conversation metadata updated
-
-**Example WebSocket Messages:**
+**Response:**
 ```json
-{
-  "type": "message.typing",
-  "data": {
-    "agent_type": "calculation",
-    "status": "Processing your calculation request..."
-  }
-}
-
-{
-  "type": "message.stream",
-  "data": {
-    "message_id": "msg-uuid-stream",
-    "content_chunk": "Based on my analysis of the invoices, ",
-    "is_complete": false
-  }
-}
-
-{
-  "type": "message.complete",
-  "data": {
-    "message_id": "msg-uuid-stream",
-    "final_content": "Based on my analysis of the invoices, the total amount from Supplier ABC in November is €15,750.00 across 8 invoices.",
-    "metadata": {
-      "processing_time": 4.2,
-      "documents_analyzed": 8,
-      "confidence": 0.98
-    }
-  }
-}
-```
-
----
-
-## AI Agent Integration
-
-### Available Agents
-
-#### Invoice Retrieval Agent
-
-Specialized in finding and retrieving invoice documents based on search criteria.
-
-**Capabilities:**
-- Natural language search queries
-- Complex filtering (date ranges, amounts, vendors)
-- Intelligent result ranking
-- Cross-reference analysis
-
-**Example Queries:**
-- "Find all invoices from Supplier XYZ last month"
-- "Show me invoices over €5,000 from Q3 2023"
-- "Which invoices are still unpaid from this vendor?"
-
-#### Invoice QA Agent
-
-Provides detailed analysis and answers questions about invoice content using RAG.
-
-**Capabilities:**
-- Line-by-line invoice analysis
-- VAT calculation verification
-- Compliance checking
-- Cross-document comparisons
-
-**Example Queries:**
-- "What are the line items in invoice INV-123?"
-- "Is the VAT calculation correct on this invoice?"
-- "Compare the pricing between these two invoices"
-
-#### Calculation Agent
-
-Performs financial calculations and analysis on invoice data.
-
-**Capabilities:**
-- VAT calculations and verification
-- Total amount calculations
-- Currency conversions
-- Financial ratio analysis
-- Trend analysis
-
-**Example Queries:**
-- "Calculate the total VAT for all invoices this month"
-- "What's the average invoice amount from this supplier?"
-- "Show me the payment terms analysis for these invoices"
-
-#### MongoDB Agent
-
-Direct database access for complex queries and analytics.
-
-**Capabilities:**
-- Complex aggregation queries
-- Statistical analysis
-- Data mining operations
-- Performance analytics
-
-**Example Queries:**
-- "Show me processing time trends over the last 3 months"
-- "Which vendors have the highest invoice volumes?"
-- "Generate a confidence score distribution report"
-
-### Agent Routing
-
-The system automatically routes queries to the most appropriate agent based on:
-
-**Intent Recognition**: Analysis of user query to understand the intended action
-**Agent Capabilities**: Matching query requirements with agent specializations
-**Context Awareness**: Considering conversation history and current context
-**Load Balancing**: Distributing queries across available agent instances
-
-### Agent Response Format
-
-All agent responses follow a consistent structure:
-
-```json
-{
-  "message_id": "msg-uuid-response",
-  "agent_type": "calculation",
-  "content": "The total VAT amount across all selected invoices is €2,400.00",
-  "confidence": 0.95,
-  "metadata": {
-    "processing_time": 3.2,
-    "documents_analyzed": 12,
-    "calculations_performed": [
-      {
-        "operation": "vat_sum",
-        "input_count": 12,
-        "result": 2400.00
-      }
-    ],
-    "data_sources": ["processed_invoices", "extraction_data"]
+[
+  {
+    "id": "msg-uuid-1",
+    "role": "user",
+    "content": "Please analyze the VAT amounts in these invoices",
+    "created_at": "2023-12-01T15:40:00Z"
   },
-  "actions_taken": [
-    {
-      "action": "database_query",
-      "query_type": "aggregation",
-      "execution_time": 1.8
-    }
-  ],
-  "suggestions": [
-    "Would you like me to break down the VAT by rate (20%, 10%, 5.5%)?",
-    "I can also show you which invoices contribute most to this total."
-  ]
-}
+  {
+    "id": "msg-uuid-2",
+    "role": "assistant",
+    "content": "I'll analyze the VAT amounts in the invoices you've referenced...",
+    "created_at": "2023-12-01T15:45:00Z"
+  }
+]
 ```
 
 ---
 
-## Advanced Features
+## Real-Time Streaming
 
-### Conversation Context Management
+### Stream Chat Response
 
-#### Update Context
-
-Modify conversation context to influence agent behavior and responses.
+Stream a real-time AI response to a user message.
 
 ```http
-PATCH /api/conversations/{conversation_id}/context
+POST /users/{user_id}/conversations/{conversation_id}/stream
 ```
 
 **Request Body:**
 ```json
 {
-  "document_ids": ["INV-123", "INV-124", "INV-125"],
-  "focus_area": "vat_analysis",
-  "user_preferences": {
-    "language": "french",
-    "detail_level": "summary",
-    "include_calculations": true
-  },
-  "business_context": {
-    "company_type": "sarl",
-    "accounting_period": "2023",
-    "vat_regime": "normal"
-  }
+  "role": "user",
+  "content": "Calculate the total VAT for all invoices from supplier ABC"
 }
 ```
 
-#### Get Context History
+**Response (Server-Sent Events):**
+```
+data: {"chunk": "I'll ", "conversation_id": "conv-uuid-1"}
 
-Track how conversation context has evolved over time.
+data: {"chunk": "calculate ", "conversation_id": "conv-uuid-1"}
 
-```http
-GET /api/conversations/{conversation_id}/context/history
+data: {"chunk": "the total VAT ", "conversation_id": "conv-uuid-1"}
+
+data: {"chunk": "for supplier ABC. ", "conversation_id": "conv-uuid-1"}
+
+data: {"chunk": "[DONE]", "conversation_id": "conv-uuid-1"}
 ```
 
-### Conversation Analytics
+**Response Headers:**
+- `Content-Type: text/event-stream`
+- `Cache-Control: no-cache`
+- `Connection: keep-alive`
 
-#### Get Conversation Statistics
+### Legacy Streaming Endpoint
 
-Detailed analytics about conversation performance and usage.
+Alternative streaming endpoint that supports both conversation-based and session-based interactions.
 
 ```http
-GET /api/conversations/{conversation_id}/analytics
+POST /users/{user_id}/stream_id_chat
+```
+
+**Request Body:**
+```json
+{
+  "message": "Show me all unpaid invoices",
+  "user_id": "user-123",
+  "session_id": "session-uuid-456",
+  "conversation_id": "conv-uuid-789"
+}
+```
+
+**Response (Server-Sent Events):**
+```
+data: {"chunk": "Here are ", "session_id": "session-uuid-456", "conversation_id": "conv-uuid-789"}
+
+data: {"chunk": "all unpaid invoices: ", "session_id": "session-uuid-456", "conversation_id": "conv-uuid-789"}
+```
+
+---
+
+## File Management and RAG Integration
+
+### Upload File to Conversation
+
+Upload a PDF file to a conversation for RAG (Retrieval-Augmented Generation) functionality.
+
+```http
+POST /users/{user_id}/conversations/{conversation_id}/files
+```
+
+**Request Body (multipart/form-data):**
+- `file` (file, required): PDF file to upload
+
+**Response:**
+```json
+{
+  "status": "success",
+  "file_path": "storage/uploads/conversations/conv-uuid-1/document.pdf",
+  "filename": "document.pdf",
+  "message": "File uploaded successfully and conversation updated"
+}
+```
+
+**File Processing:**
+- Files are stored in `storage/uploads/conversations/{conversation_id}/`
+- PDF files are automatically processed for RAG capabilities
+- Conversation agents can access uploaded documents for context-aware responses
+- ChromaDB vector store is created for document embeddings
+- Ollama embedder (mxbai-embed-large) is used for text embedding
+
+---
+
+## Conversation Enhancement
+
+### Auto-Generate Conversation Title
+
+Automatically generate a descriptive title based on conversation content.
+
+```http
+POST /users/{user_id}/conversations/{conversation_id}/auto-title
+```
+
+**Response:**
+```json
+{
+  "status": "title_generation_started"
+}
+```
+
+*Note: This operation runs in the background and updates the conversation title asynchronously.*
+
+### Get Conversation Summary
+
+Generate a summary of the conversation content.
+
+```http
+GET /users/{user_id}/conversations/{conversation_id}/summary
 ```
 
 **Response:**
 ```json
 {
   "conversation_id": "conv-uuid-1",
-  "analytics": {
-    "message_statistics": {
-      "total_messages": 45,
-      "user_messages": 23,
-      "agent_messages": 22,
-      "average_response_time": 3.4
-    },
-    "agent_usage": {
-      "retrieval": 15,
-      "calculation": 8,
-      "invoice_qa": 12,
-      "mongodb": 3
-    },
-    "document_interactions": {
-      "documents_referenced": 8,
-      "documents_analyzed": 12,
-      "most_discussed_document": "INV-123"
-    },
-    "performance_metrics": {
-      "average_confidence": 0.94,
-      "successful_queries": 38,
-      "failed_queries": 0,
-      "user_satisfaction_indicators": 0.92
-    }
-  }
+  "summary": "User discussed VAT analysis for December 2023 invoices, focusing on supplier ABC. AI agent calculated total VAT amounts and identified potential discrepancies.",
+  "key_topics": ["VAT analysis", "invoice review", "supplier ABC"],
+  "message_count": 15,
+  "generated_at": "2023-12-01T16:00:00Z"
 }
 ```
 
-### Conversation Templates
+## Health Check
 
-#### Create from Template
+### Conversation Service Health
 
-Start conversations based on predefined templates for common workflows.
+Check the health status of the conversation service.
 
 ```http
-POST /api/conversations/from-template
+GET /conversations/health
 ```
 
-**Request Body:**
+**Response:**
 ```json
 {
-  "template_name": "monthly_invoice_review",
-  "parameters": {
-    "month": "2023-12",
-    "vendor_focus": "top_10_suppliers",
-    "analysis_depth": "comprehensive"
-  },
-  "custom_title": "December 2023 Invoice Review"
+  "status": "healthy",
+  "service": "conversation_api",
+  "timestamp": "2023-12-01T10:30:00Z"
 }
 ```
-
-**Available Templates:**
-- `monthly_invoice_review`: Comprehensive monthly invoice analysis
-- `vendor_analysis`: Deep dive into specific vendor relationships
-- `vat_compliance_check`: VAT calculation and compliance verification
-- `payment_status_review`: Payment tracking and overdue analysis
-- `expense_categorization`: Account mapping and expense analysis
-
-### Conversation Export
-
-#### Export Conversation
-
-Export complete conversation history in various formats.
-
-```http
-POST /api/conversations/{conversation_id}/export
-```
-
-**Request Body:**
-```json
-{
-  "format": "pdf",
-  "include_metadata": true,
-  "include_agent_reasoning": false,
-  "date_range": {
-    "from": "2023-12-01",
-    "to": "2023-12-31"
-  }
-}
-```
-
-**Supported Formats:**
-- **PDF**: Formatted conversation report
-- **JSON**: Complete conversation data
-- **CSV**: Message data in tabular format
-- **HTML**: Web-viewable conversation
 
 ---
 
-## Search and Discovery
+## Data Models
 
-### Search Conversations
+### Conversation Response Model
 
-Advanced search across all conversations and messages.
-
-```http
-POST /api/conversations/search
-```
-
-**Request Body:**
-```json
-{
-  "query": "VAT calculation errors",
-  "search_scope": ["titles", "messages", "context"],
-  "filters": {
-    "date_range": ["2023-01-01", "2023-12-31"],
-    "conversation_types": ["invoice_analysis", "vat_compliance"],
-    "agent_types": ["calculation", "invoice_qa"],
-    "document_ids": ["INV-123", "INV-124"]
-  },
-  "limit": 20,
-  "include_highlights": true
+```typescript
+interface ConversationResponse {
+  id: string;
+  user_id: string;
+  title: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean;
+  last_message_preview?: string;
 }
 ```
 
-### Get Related Conversations
+### Conversation Detail Response Model
 
-Find conversations related to current context or documents.
-
-```http
-GET /api/conversations/{conversation_id}/related
+```typescript
+interface ConversationDetailResponse {
+  id: string;
+  user_id: string;
+  title: string;
+  messages: Message[];
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean;
+  metadata: Record<string, any>;
+  file_paths: string[];
+}
 ```
 
-**Query Parameters:**
-- `similarity_threshold`: Minimum similarity score (0.0-1.0)
-- `max_results`: Maximum number of related conversations
-- `include_archived`: Include archived conversations
+### Message Model
+
+```typescript
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+```
 
 ---
 
-## Webhooks and Notifications
+## Error Handling
 
-### Configure Conversation Webhooks
+### Common Error Responses
 
-Set up webhooks for conversation events.
-
-```http
-POST /api/conversations/webhooks
-```
-
-**Request Body:**
 ```json
+// Conversation not found
 {
-  "url": "https://your-system.com/webhook/conversations",
-  "events": [
-    "conversation.created",
-    "message.received",
-    "agent.responded",
-    "conversation.completed"
-  ],
-  "secret": "webhook-secret-key",
-  "active": true
+  "detail": "Conversation not found"
+}
+
+// Permission denied
+{
+  "detail": "Failed to get conversation: Access denied"
+}
+
+// Validation error
+{
+  "detail": "Failed to create conversation: Title cannot be empty"
+}
+
+// File upload error
+{
+  "detail": "Only PDF files are supported"
 }
 ```
 
-**Available Events:**
-- `conversation.created`: New conversation started
-- `conversation.updated`: Conversation metadata changed
-- `message.received`: New user message
-- `agent.responded`: Agent response completed
-- `conversation.archived`: Conversation archived
-- `conversation.completed`: Conversation marked complete
+### Status Codes
 
-The Conversations API provides a comprehensive foundation for building intelligent, context-aware chat interfaces that seamlessly integrate with accounting workflows while maintaining conversation history and enabling sophisticated AI agent interactions. 
+- `200`: Successful operation
+- `400`: Bad request (validation errors)
+- `404`: Resource not found (conversation, user)
+- `500`: Internal server error
+
+---
+
+
+
+
+

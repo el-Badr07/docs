@@ -1,107 +1,656 @@
 ---
-title: 'Development'
-description: 'Preview changes locally to update your docs'
+title: 'Development Guide'
+description: 'Complete guide for developing, customizing, and deploying Textra accounting automation platform'
 ---
+This comprehensive guide covers everything you need to know for developing with Textra, from local setup to production deployment, customization, and advanced configuration.
+
+## Overview
+
+Textra is a sophisticated accounting automation platform built with modern technologies and enterprise-grade architecture:
+
+- **Backend**: Python FastAPI with async processing
+- **Frontend**: React/TypeScript with modern UI components
+- **Database**: MongoDB for document storage, Redis for caching
+- **Message Queue**: RabbitMQ for async task processing
+- **AI Integration**: Multi-provider LLM support (Groq, Gemini, OpenAI)
+- **Voice**: LiveKit for real-time voice interactions
+
+## System Architecture
+
+<Tabs>
+  <Tab title="Backend Architecture">
+    ```
+    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+    │   FastAPI       │    │ Async Workers  │    │   RabbitMQ      │
+    │   Web Server    │◄──►│   Workers       │◄──►│   Message       │
+    │                 │    │                 │    │   Broker        │
+    └─────────────────┘    └─────────────────┘    └─────────────────┘
+             │                       │                       │
+             ▼                       ▼                       ▼
+    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+    │   MongoDB       │    │   Redis         │    │   File Storage  │
+    │   Documents     │    │   Cache/Session │    │   Uploads       │
+    │                 │    │                 │    │                 │
+    └─────────────────┘    └─────────────────┘    └─────────────────┘
+    ```
+  </Tab>
+  
+  <Tab title="Processing Pipeline">
+    ```
+    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+    │   Phase 1    │    │   Phase 2    │    │   Phase 3    │
+    │  Extraction  │───►│  Imputation  │───►│  Journal     │
+    │              │    │              │    │  Generation  │
+    └──────────────┘    └──────────────┘    └──────────────┘
+             │                   │                   │
+             ▼                   ▼                   ▼
+    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+    │   Phase 4    │    │   Phase 5    │    │   Results    │
+    │  Validation  │───►│   Export     │───►│   Storage    │
+    │              │    │              │    │              │
+    └──────────────┘    └──────────────┘    └──────────────┘
+    ```
+  </Tab>
+</Tabs>
+
+## Local Development Setup
+
+### Prerequisites
 
 <Info>
-  **Prerequisite**: Please install Node.js (version 19 or higher) before proceeding. <br />
-  Please upgrade to ```docs.json``` before proceeding and delete the legacy ```mint.json``` file.
+  **System Requirements**: 
+  - Python 3.11+ (recommended 3.11.5)
+  - Node.js 18+ (for frontend development)
+  - MongoDB 4.4+ 
+  - Redis 6.0+
+  - RabbitMQ 3.8+
 </Info>
 
-Follow these steps to install and run Mintlify on your operating system:
+### Step 1: Environment Setup
 
-**Step 1**: Install Mintlify:
-
-<CodeGroup>
-
-  ```bash npm
-  npm i -g mintlify
-  ```
-
-```bash yarn
-yarn global add mintlify
-```
-
-</CodeGroup>
-
-**Step 2**: Navigate to the docs directory (where the `docs.json` file is located) and execute the following command:
-
-```bash
-mintlify dev
-```
-
-A local preview of your documentation will be available at `http://localhost:3000`.
-
-### Custom Ports
-
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. To run Mintlify on port 3333, for instance, use this command:
-
-```bash
-mintlify dev --port 3333
-```
-
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
-
-```md
-Port 3000 is already in use. Trying 3001 instead.
-```
-
-## Mintlify Versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local website doesn't align with the production version, please update the CLI:
+Clone and set up the repository:
 
 <CodeGroup>
+```bash Manual Setup
+# Clone repository
+git clone https://github.com/el-Badr07/Textra.git
+cd textra
 
-```bash npm
-npm i -g mintlify@latest
+# Create Python virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
 ```
 
-```bash yarn
-yarn global upgrade mintlify
-```
+```bash Docker Development
+# Clone repository
+git clone https://github.com/el-Badr07/Textra.git
+cd textra
 
+# Start development services
+docker-compose -f docker-compose.dev.yml up -d
+
+# This starts all required services in development mode
+```
 </CodeGroup>
 
-## Validating Links
+### Step 2: Configuration
 
-The CLI can assist with validating reference links made in your documentation. To identify any broken links, use the following command:
+Create your development environment file:
 
-```bash
-mintlify broken-links
+```bash .env.development
+# Database Configuration
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DB_NAME=textra_dev
+REDIS_URL=redis://localhost:6379
+RABBITMQ_URL=amqp://guest:guest@localhost:5672
+
+# LLM Provider Configuration
+GROQ_API_KEY=your_groq_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Development Settings
+DEBUG=true
+LOG_LEVEL=DEBUG
+RELOAD=true
+
+# File Storage (Development)
+UPLOAD_FOLDER=./uploads
+STORAGE_FOLDER=./storage
+MAX_FILE_SIZE=10485760  # 10MB
+
+# Security (Development)
+SECRET_KEY=dev-secret-key-change-in-production
+CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
+
+# Performance Settings
+CACHE_TTL=300  # 5 minutes for development
+WORKER_CONCURRENCY=2
+
+# Frontend Configuration
+REACT_APP_API_URL=http://localhost:8000
+REACT_APP_UPLOAD_MAX_SIZE=10485760
 ```
 
-## Deployment
+### Step 3: Database Initialization
 
-<Tip>
-  Unlimited editors available under the [Pro
-  Plan](https://mintlify.com/pricing) and above.
-</Tip>
+Set up your development databases:
 
-If the deployment is successful, you should see the following:
+<CodeGroup>
+```bash Manual Database Setup
+# Start MongoDB
+mongod --dbpath ./data/db
 
-<Frame>
-  <img src="/images/checks-passed.png" style={{ borderRadius: '0.5rem' }} />
-</Frame>
+# Start Redis
+redis-server
 
-## Code Formatting
+# Start RabbitMQ
+rabbitmq-server
 
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
+# Initialize database collections
+python scripts/init_db.py
+```
 
-## Troubleshooting
+```bash Docker Database Setup
+# Start services with Docker
+docker-compose up -d mongodb redis rabbitmq
 
-<AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
+# Run database initialization
+docker-compose exec backend python scripts/init_db.py
+```
+</CodeGroup>
 
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of mintlify: `npm remove -g mintlify`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall mintlify: `npm install -g mintlify`
-  </Accordion>
+### Step 4: Start Development Servers
 
-  <Accordion title="Issue: Encountering an unknown error">
+<Tabs>
+  <Tab title="Backend Development">
+    ```bash
+    # Activate virtual environment
+    source .venv/bin/activate
+    
+    # Start FastAPI development server
+    uvicorn src.main:app --host 0.0.0.0 --port 8001
+    
+    ```
+    
+    **Development Features:**
+    - Detailed error tracebacks
+    - API documentation at `http://localhost:8001/docs`
+    - OpenAPI schema at `http://localhost:8001/openapi.json`
+  </Tab>
   
-    Solution: Go to the root of your device and delete the \~/.mintlify folder. Afterwards, run `mintlify dev` again.
-  </Accordion>
-</AccordionGroup>
+  <Tab title="Frontend Development">
+    ```bash
+    # Navigate to frontend directory
+    cd frontend
+    
+    # Start React development server
+    npm run dev
+    
+    # Or with specific port
+    npm run dev --port 3000
+    ```
+    
+    **Development Features:**
+    - Hot module replacement
+    - TypeScript type checking
+    - ESLint code quality checks
+    - Component development with Storybook
+  </Tab>
+  
+  <Tab title="Worker Processes">
+    ```bash
+    # Start RabbitMQ consumer workers (one per process)
+    python -m src.message_worker.run_worker
+    
+    # Scale-out: simply start more copies on the same or different machines
+    # Each worker connects to RabbitMQ and pulls from `task_queue`
+    ```
+    
+    **Worker Features:**
+    - Async RabbitMQ consumer (aio-pika)
+    - Task progress + results cached in Redis
+    - Automatic reconnection & graceful shutdown
+    - Horizontal scaling: start as many instances as needed
+  </Tab>
+</Tabs>
 
-Curious about what changed in the CLI version? [Check out the CLI changelog.](https://www.npmjs.com/package/mintlify?activeTab=versions)
+## Development Workflow
+
+### Code Structure
+
+```
+textra/
+├── src/                          # Backend source code
+│   ├── api/                      # FastAPI route handlers
+│   ├── agents/                   # AI agent implementations
+│   ├── models/                   # Pydantic data models
+│   ├── services/                 # Business logic services
+│   ├── utils/                    # Utility functions
+│   └── main.py                   # FastAPI application entry
+├── frontend/                     # React frontend
+│   ├── src/
+│   │   ├── components/           # React components
+│   │   ├── pages/                # Page components
+│   │   ├── services/             # API client services
+│   │   └── types/                # TypeScript type definitions
+├── docker/                       # Docker configurations
+```
+
+### Adding New Features
+
+<Steps>
+  <Step title="Backend Feature Development">
+    1. **Create Model**: Define Pydantic models in `src/models/`
+    2. **Implement Service**: Add business logic in `src/services/`
+    3. **Add API Endpoint**: Create route handler in `src/api/`
+    4. **Write Tests**: Add comprehensive tests in `tests/`
+    5. **Update Documentation**: Document new endpoints
+  </Step>
+  
+  <Step title="Frontend Feature Development">
+    1. **Define Types**: Add TypeScript types in `src/types/`
+    2. **Create Components**: Build React components in `src/components/`
+    3. **Add API Service**: Implement API calls in `src/services/`
+    4. **Create Pages**: Add page components in `src/pages/`
+    5. **Update Navigation**: Add routes and navigation
+  </Step>
+  
+  <Step title="Integration Testing">
+    1. **Unit Tests**: Test individual components
+    2. **Integration Tests**: Test API endpoints
+    3. **E2E Tests**: Test complete user workflows
+    4. **Performance Tests**: Validate response times
+    5. **Security Tests**: Check authentication and authorization
+  </Step>
+</Steps>
+
+## Customization and Configuration
+
+### LLM Provider Configuration
+
+Configure multiple LLM providers for different use cases:
+
+```python src/config/llm_config.py
+LLM_PROVIDERS = {
+    "groq": {
+        "api_key": os.getenv("GROQ_API_KEY"),
+        "model": "llama3-8b-8192",
+        "use_cases": ["extraction", "fast_processing"],
+        "max_tokens": 8192,
+        "temperature": 0.1
+    },
+    "gemini": {
+        "api_key": os.getenv("GEMINI_API_KEY"),
+        "model": "gemini-1.5-pro",
+        "use_cases": ["complex_analysis", "reasoning"],
+        "max_tokens": 32768,
+        "temperature": 0.2
+    },
+    "openai": {
+        "api_key": os.getenv("OPENAI_API_KEY"),
+        "model": "gpt-4o",
+        "use_cases": ["fallback", "validation"],
+        "max_tokens": 4096,
+        "temperature": 0.1
+    }
+}
+
+# Provider selection logic
+def select_provider(use_case: str, fallback: bool = False):
+    for provider, config in LLM_PROVIDERS.items():
+        if use_case in config["use_cases"]:
+            return provider, config
+    return "openai", LLM_PROVIDERS["openai"]  # Default fallback
+```
+
+### PCG Account Customization
+
+Customize French PCG account mappings:
+
+```python src/config/pcg_config.py
+# Custom account mappings for specific business types
+CUSTOM_PCG_MAPPINGS = {
+    "restaurant": {
+        "food_purchases": "607100",
+        "beverage_purchases": "607200",
+        "kitchen_equipment": "215400"
+    },
+    "consulting": {
+        "subcontractor_fees": "611000",
+        "office_supplies": "606400",
+        "travel_expenses": "625100"
+    },
+    "retail": {
+        "inventory_purchases": "607000",
+        "packaging_materials": "602600",
+        "point_of_sale": "218300"
+    }
+}
+
+# VAT rate configurations
+VAT_RATES = {
+    "standard": 0.20,
+    "reduced": 0.055,
+    "intermediate": 0.10,
+    "zero": 0.00,
+    "exempt": None
+}
+
+# Industry-specific validation rules
+VALIDATION_RULES = {
+    "restaurant": {
+        "required_accounts": ["607100", "445620"],
+        "max_meal_voucher_pct": 0.19,
+        "alcohol_license_required": True
+    },
+    "consulting": {
+        "required_accounts": ["706000", "445711"],
+        "max_expense_ratio": 0.30,
+        "subcontractor_threshold": 50000
+    }
+}
+```
+
+### Processing Pipeline Customization
+
+Customize the 5-phase processing pipeline:
+
+```python src/config/pipeline_config.py
+PIPELINE_CONFIG = {
+    "extraction": {
+        "ocr_provider": "tesseract",  # or "google_vision", "aws_textract"
+        "confidence_threshold": 0.8,
+        "languages": ["fra", "eng"],
+        "preprocessing": {
+            "denoise": True,
+            "deskew": True,
+            "enhance_contrast": True
+        }
+    },
+    "imputation": {
+        "confidence_threshold": 0.85,
+        "use_fuzzy_matching": True,
+        "fallback_to_manual": True,
+        "account_suggestion_limit": 3
+    },
+    "journal": {
+        "enforce_balance": True,
+        "sequence_numbering": "automatic",
+        "journal_types": ["JA", "JV", "BQ", "CS", "OD"],
+        "multicurrency_support": True
+    },
+    "validation": {
+        "vat_validation": True,
+        "amount_tolerance": 0.01,
+        "date_range_check": True,
+        "business_rules": True
+    },
+    "export": {
+        "default_format": "fec",
+        "encoding": "utf-8",
+        "decimal_separator": ",",
+        "date_format": "dd/mm/yyyy"
+    }
+}
+```
+
+## Production Deployment
+
+### Environment Configuration
+
+<Tabs>
+  <Tab title="Docker Production">
+    ```yaml docker-compose.prod.yml
+    version: '3.8'
+    services:
+      backend:
+        build: 
+          context: .
+          dockerfile: Dockerfile.prod
+        environment:
+          - ENVIRONMENT=production
+          - DEBUG=false
+          - LOG_LEVEL=INFO
+        volumes:
+          - ./storage:/app/storage
+          - ./uploads:/app/uploads
+        networks:
+          - textra-network
+    
+      frontend:
+        build:
+          context: ./frontend
+          dockerfile: Dockerfile.prod
+        environment:
+          - NODE_ENV=production
+        networks:
+          - textra-network
+    
+      nginx:
+        image: nginx:alpine
+        ports:
+          - "80:80"
+          - "443:443"
+        volumes:
+          - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+          - ./ssl:/etc/nginx/ssl
+        networks:
+          - textra-network
+    
+      mongodb:
+        image: mongo:6.0
+        environment:
+          - MONGO_INITDB_ROOT_USERNAME=admin
+          - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+        volumes:
+          - mongodb_data:/data/db
+        networks:
+          - textra-network
+    
+      redis:
+        image: redis:7-alpine
+        command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+        volumes:
+          - redis_data:/data
+        networks:
+          - textra-network
+    
+      rabbitmq:
+        image: rabbitmq:3-management
+        environment:
+          - RABBITMQ_DEFAULT_USER=admin
+          - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+        volumes:
+          - rabbitmq_data:/var/lib/rabbitmq
+        networks:
+          - textra-network
+    
+    volumes:
+      mongodb_data:
+      redis_data:
+      rabbitmq_data:
+    
+    networks:
+      textra-network:
+        driver: bridge
+    ```
+  </Tab>
+  
+  <Tab title="Kubernetes Deployment">
+    ```yaml k8s/deployment.yml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: textra-backend
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: textra-backend
+      template:
+        metadata:
+          labels:
+            app: textra-backend
+        spec:
+          containers:
+          - name: backend
+            image: textra/backend:latest
+            ports:
+            - containerPort: 8000
+            env:
+            - name: MONGODB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: textra-secrets
+                  key: mongodb-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: textra-secrets
+                  key: redis-url
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "2000m"
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: 8000
+              initialDelaySeconds: 30
+              periodSeconds: 10
+            readinessProbe:
+              httpGet:
+                path: /ready
+                port: 8000
+              initialDelaySeconds: 5
+              periodSeconds: 5
+    ```
+  </Tab>
+</Tabs>
+
+### Production Environment Variables
+
+```bash .env.production
+# Database Configuration (Production)
+MONGODB_URL=mongodb://admin:${MONGO_PASSWORD}@mongodb:27017/textra_prod?authSource=admin
+REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+RABBITMQ_URL=amqp://admin:${RABBITMQ_PASSWORD}@rabbitmq:5672
+
+# Security (Production)
+SECRET_KEY=${SECRET_KEY}
+CORS_ORIGINS=["https://yourdomain.com"]
+HTTPS_ONLY=true
+SECURE_COOKIES=true
+
+# Performance (Production)
+WORKER_CONCURRENCY=4
+CACHE_TTL=3600
+MAX_CONCURRENT_UPLOADS=10
+RATE_LIMIT_PER_MINUTE=100
+
+# Monitoring
+SENTRY_DSN=${SENTRY_DSN}
+LOG_LEVEL=INFO
+METRICS_ENABLED=true
+HEALTH_CHECK_INTERVAL=30
+
+# Storage (Production)
+UPLOAD_FOLDER=/app/uploads
+STORAGE_FOLDER=/app/storage
+MAX_FILE_SIZE=52428800  # 50MB
+BACKUP_ENABLED=true
+BACKUP_RETENTION_DAYS=30
+```
+
+### Monitoring and Observability
+
+<CardGroup>
+  <Card title="Application Monitoring" icon="chart-line">
+    ```yaml monitoring/grafana/dashboard.yml
+    # Grafana dashboard for Textra metrics
+    dashboard:
+      title: "Textra Accounting Platform"
+      panels:
+        - title: "Invoice Processing Rate"
+          type: "graph"
+          metrics: ["textra_invoices_processed_total"]
+        - title: "Processing Pipeline Performance"
+          type: "heatmap"
+          metrics: ["textra_pipeline_duration_seconds"]
+        - title: "LLM Provider Usage"
+          type: "pie"
+          metrics: ["textra_llm_requests_by_provider"]
+    ```
+  </Card>
+  
+  <Card title="Error Tracking" icon="bug">
+    ```python src/utils/error_tracking.py
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    
+    # Initialize Sentry for error tracking
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=0.1,
+        environment=os.getenv("ENVIRONMENT", "development")
+    )
+    ```
+  </Card>
+</CardGroup>
+
+### Backup and Recovery
+
+<CodeGroup>
+```bash Database Backup
+#!/bin/bash
+# Automated MongoDB backup script
+
+BACKUP_DIR="/backups/mongodb"
+DATE=$(date +%Y%m%d_%H%M%S)
+MONGO_URL="mongodb://admin:${MONGO_PASSWORD}@mongodb:27017"
+
+# Create backup
+mongodump --uri="$MONGO_URL" --out="$BACKUP_DIR/$DATE"
+
+# Compress backup
+tar -czf "$BACKUP_DIR/textra_backup_$DATE.tar.gz" -C "$BACKUP_DIR" "$DATE"
+
+# Clean up old backups (keep last 30 days)
+find "$BACKUP_DIR" -name "*.tar.gz" -mtime +30 -delete
+
+echo "Backup completed: textra_backup_$DATE.tar.gz"
+```
+
+```bash File Storage Backup
+#!/bin/bash
+# Automated file storage backup script
+
+STORAGE_DIR="/app/storage"
+BACKUP_DIR="/backups/files"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+# Sync files to backup location
+rsync -av --delete "$STORAGE_DIR/" "$BACKUP_DIR/$DATE/"
+
+# Create compressed archive
+tar -czf "$BACKUP_DIR/files_backup_$DATE.tar.gz" -C "$BACKUP_DIR" "$DATE"
+
+# Upload to cloud storage (optional)
+aws s3 cp "$BACKUP_DIR/files_backup_$DATE.tar.gz" "s3://textra-backups/"
+
+echo "File backup completed: files_backup_$DATE.tar.gz"
+```
+</CodeGroup>

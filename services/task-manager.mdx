@@ -1,0 +1,432 @@
+---
+title: "Task Manager Service"
+description: "Asynchronous task management service for Textra's background processing workflows"
+---
+
+The Task Manager Service orchestrates asynchronous task processing for Textra's accounting automation pipeline. It provides task scheduling, execution, monitoring, and result management through RabbitMQ integration with intelligent retry mechanisms and comprehensive status tracking.
+
+## Service Architecture
+
+### Core Components
+
+The Task Manager integrates with multiple services:
+
+- **Queue Service**: RabbitMQ-based message handling
+- **Cache Service**: Redis for task status and result caching
+- **Database Service**: MongoDB for persistent task records
+- **Task Handlers**: Specialized processors for different task types
+
+```python
+class TaskManager:
+    def __init__(self):
+        self.queue_service = None
+        self.cache_service = None
+        self.db_service = None
+        self.task_handlers = {}
+        self.running = False
+```
+
+### Task Types
+
+The system supports **8 specialized task types**:
+
+1. **invoice_processing**: Single invoice processing pipeline
+2. **batch_processing**: Multi-invoice batch processing
+3. **export_accounting**: Accounting data export tasks
+4. **financial_document_processing**: Financial document analysis
+5. **intelligent_journal_generation**: AI-powered journal creation
+6. **bank_statement_processing**: Bank statement reconciliation
+7. **payroll_processing**: Payroll document processing
+8. **expense_receipt_processing**: Expense receipt analysis
+
+## Core Methods
+
+### Service Initialization
+
+```python
+async def initialize(self):
+    """Initialize required services."""
+```
+
+Establishes connections to:
+- RabbitMQ queue service
+- Redis cache service
+- MongoDB database service
+
+### Task Handler Registration
+
+```python
+async def register_task_handler(self, task_type: str, handler: Callable):
+    """Register a task handler for a specific task type."""
+```
+
+Registers specialized handlers for each task type, enabling the task manager to route tasks to appropriate processors.
+
+### Task Submission
+
+```python
+async def submit_task(self, task: TaskMessage) -> str:
+    """Submit a task for processing."""
+```
+
+**Process Flow:**
+1. Generates unique task ID if not provided
+2. Sets initial task status in Redis cache
+3. Publishes task to RabbitMQ queue
+4. Returns task ID for tracking
+
+**Example Usage:**
+```python
+task = InvoiceProcessingMessage(
+    task_id="550e8400-e29b-41d4-a716-446655440000",
+    invoice_id="INV-12345678-231201",
+    file_path="/uploads/invoice.pdf",
+    processing_id="ObjectId",
+    priority=TaskPriority.NORMAL
+)
+
+task_id = await task_manager.submit_task(task)
+```
+
+## Task Processing
+
+### Task Execution
+
+```python
+async def process_task(self, task: TaskMessage):
+    """Process a task using registered handlers."""
+```
+
+**Processing Workflow:**
+1. Validates task handler exists
+2. Updates task status to STARTED
+3. Converts generic TaskMessage to specific type
+4. Executes appropriate handler
+5. Reports success or failure
+
+### Task Type Conversion
+
+The service intelligently converts generic `TaskMessage` objects to specific message types:
+
+```python
+# Invoice Processing
+if task.task_type == "invoice_processing":
+    specific_task = InvoiceProcessingMessage(**task_dict)
+
+# Batch Processing  
+elif task.task_type == "batch_processing":
+    specific_task = BatchProcessingMessage(**task_dict)
+
+# Export Accounting
+elif task.task_type == "export_accounting":
+    specific_task = ExportAccountingMessage(**task_dict)
+```
+
+### Error Handling and Retries
+
+```python
+async def retry_task(self, task: TaskMessage):
+    """Retry a failed task with exponential backoff."""
+```
+
+**Retry Logic:**
+- Maximum retry attempts configurable per task
+- Exponential backoff delay calculation
+- Automatic retry queue management
+- Permanent failure detection
+
+## Task Status Management
+
+### Status Updates
+
+```python
+async def report_progress(self, task_id: str, current: int, total: int, status: str = None):
+async def report_success(self, task_id: str, result: Any = None):
+async def report_failure(self, task_id: str, error: Union[str, Dict[str, Any]]):
+```
+
+### Status Tracking
+
+```python
+async def get_task_status(self, task_id: str) -> Dict[str, Any]:
+    """Get comprehensive task status information."""
+```
+
+**Status Response:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "STARTED|SUCCESS|FAILURE|PENDING",
+  "progress": {
+    "current": 3,
+    "total": 5,
+    "percentage": 60,
+    "current_phase": "Phase 3 - Journal Generation"
+  },
+  "result": {
+    "invoice_id": "INV-12345678-231201",
+    "processing_complete": true,
+    "export_files": [...]
+  },
+  "error": null,
+  "retry_count": 0,
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:32:15Z"
+}
+```
+
+## Task Message Types
+
+### Invoice Processing Message
+
+```python
+class InvoiceProcessingMessage(TaskMessage):
+    invoice_id: str
+    file_path: str
+    processing_id: str
+    export_formats: Optional[List[str]] = ["csv", "json"]
+    auto_export: bool = True
+```
+
+### Batch Processing Message
+
+```python
+class BatchProcessingMessage(TaskMessage):
+    file_paths: List[str]
+    processing_ids: List[str]
+    max_workers: Optional[int] = 3
+    export_formats: Optional[List[str]] = ["csv", "json"]
+```
+
+### Export Accounting Message
+
+```python
+class ExportAccountingMessage(TaskMessage):
+    invoice_id: str
+    export_formats: List[str]
+    export_path: Optional[str] = None
+    base_filename: Optional[str] = None
+```
+
+### Financial Document Processing Message
+
+```python
+class FinancialDocumentProcessingMessage(TaskMessage):
+    document_id: str
+    document_type: str
+    processing_options: Optional[Dict[str, Any]] = {}
+```
+
+## Worker Management
+
+### Start Worker
+
+```python
+async def start_worker(self):
+    """Start the task worker to process tasks from the queue."""
+```
+
+**Worker Process:**
+1. Connects to RabbitMQ queue
+2. Subscribes to task messages
+3. Processes tasks using registered handlers
+4. Updates task status in cache and database
+5. Handles errors and retries automatically
+
+### Stop Worker
+
+```python
+async def stop_worker(self):
+    """Stop the task worker gracefully."""
+```
+
+Ensures graceful shutdown:
+- Completes current tasks
+- Closes queue connections
+- Updates final task statuses
+
+## Integration with Queue Service
+
+### Message Publishing
+
+The Task Manager leverages the Queue Service for reliable message delivery:
+
+```python
+# Submit task to queue
+await self.queue_service.publish_task(task)
+```
+
+### Message Consumption
+
+Workers consume messages from specialized queues:
+- `task_queue`: Primary processing queue
+- `result_queue`: Result notification queue
+- `dead_letter_queue`: Failed task handling
+
+## Caching Strategy
+
+### Task Status Caching
+
+```python
+await self.cache_service.cache_task_status_async(
+    task_id=task.task_id,
+    status=TaskStatus.PENDING
+)
+```
+
+**Cache Keys:**
+- `task:{task_id}:status`: Current task status
+- `task:{task_id}:result`: Task execution result
+- `task:{task_id}:progress`: Progress information
+- `task:{task_id}:error`: Error details if failed
+
+### Result Caching
+
+Task results are cached with appropriate TTL:
+- Success results: 24 hours
+- Error information: 7 days
+- Progress updates: 1 hour
+
+## Service Initialization
+
+### Singleton Pattern
+
+```python
+# Global task manager instance
+_task_manager = None
+
+async def get_task_manager() -> TaskManager:
+    """Get singleton task manager instance."""
+    global _task_manager
+    if _task_manager is None:
+        _task_manager = TaskManager()
+        await _task_manager.initialize()
+    return _task_manager
+```
+
+### Configuration
+
+Environment-based configuration:
+
+```python
+# Queue configuration
+RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://textra:textra@localhost:5672/")
+
+# Cache configuration  
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/1")
+
+# Database configuration
+MONGODB_URL = os.environ.get("MONGODB_URL", "mongodb://localhost:27017")
+```
+
+## Task Handler Examples
+
+### Invoice Processing Handler
+
+```python
+async def handle_invoice_processing(task: InvoiceProcessingMessage):
+    """Process a single invoice through the 5-phase pipeline."""
+    
+    # Update progress
+    await task_manager.report_progress(task.task_id, 1, 5, "Phase 1 - Extraction")
+    
+    # Execute pipeline phases
+    extraction_result = await orchestrator.extract_invoice_data(task.file_path)
+    
+    await task_manager.report_progress(task.task_id, 2, 5, "Phase 2 - Account Imputation")
+    accounting_proposals = await orchestrator.impute_accounting_data(extraction_result)
+    
+    await task_manager.report_progress(task.task_id, 3, 5, "Phase 3 - Journal Generation")
+    journal_entry = await orchestrator.generate_journal_entry(accounting_proposals)
+    
+    await task_manager.report_progress(task.task_id, 4, 5, "Phase 4 - Validation")
+    validation_result = await orchestrator.validate_journal_entry(journal_entry)
+    
+    await task_manager.report_progress(task.task_id, 5, 5, "Phase 5 - Export")
+    export_result = await orchestrator.export_accounting_data(journal_entry, task.export_formats)
+    
+    return {
+        "invoice_id": task.invoice_id,
+        "processing_complete": True,
+        "export_files": export_result.file_paths
+    }
+```
+
+### Batch Processing Handler
+
+```python
+async def handle_batch_processing(task: BatchProcessingMessage):
+    """Process multiple invoices in parallel."""
+    
+    results = []
+    total_files = len(task.file_paths)
+    
+    for i, (file_path, processing_id) in enumerate(zip(task.file_paths, task.processing_ids)):
+        # Update progress
+        await task_manager.report_progress(
+            task.task_id, 
+            i + 1, 
+            total_files, 
+            f"Processing file {i + 1} of {total_files}"
+        )
+        
+        # Process individual invoice
+        invoice_task = InvoiceProcessingMessage(
+            task_id=f"{task.task_id}-{i}",
+            file_path=file_path,
+            processing_id=processing_id,
+            **task.kwargs
+        )
+        
+        result = await handle_invoice_processing(invoice_task)
+        results.append(result)
+    
+    return {
+        "batch_complete": True,
+        "total_processed": len(results),
+        "results": results
+    }
+```
+
+## Monitoring and Analytics
+
+### Task Metrics
+
+The Task Manager tracks comprehensive metrics:
+
+```python
+task_metrics = {
+    "total_tasks_submitted": 1250,
+    "tasks_completed": 1180,
+    "tasks_failed": 15,
+    "tasks_pending": 55,
+    "average_processing_time": 12.5,
+    "success_rate": 98.8,
+    "retry_rate": 2.1,
+    "queue_depth": 45
+}
+```
+
+### Performance Monitoring
+
+- **Queue depth tracking**: Monitor pending task volume
+- **Processing time analysis**: Identify bottlenecks
+- **Error rate monitoring**: Track failure patterns
+- **Worker utilization**: Optimize resource allocation
+
+## Error Handling
+
+### Exception Types
+
+The Task Manager handles various error scenarios:
+
+```python
+class TaskHandlerNotFound(Exception):
+    """Raised when no handler is registered for a task type."""
+
+class TaskExecutionFailed(Exception):
+    """Raised when task execution fails."""
+
+class TaskTimeout(Exception):
+    """Raised when task exceeds maximum execution time."""
+```

@@ -3,8 +3,6 @@ title: "Voice API Reference"
 description: "Complete API reference for Textra's voice interaction capabilities using LiveKit for real-time conversations with AI agents"
 ---
 
-# Voice API Reference
-
 The Voice API enables real-time voice conversations with Textra's AI agents through LiveKit integration, providing natural language interaction for accounting workflows. Users can speak directly to the system to query invoices, get financial analysis, and manage accounting data through voice commands while receiving spoken responses.
 
 ## System Architecture
@@ -33,29 +31,23 @@ The voice interaction follows a sophisticated processing pipeline:
 
 ## Connection Management
 
-### Create Voice Session
+### Get Voice Connection Details
 
-Establish a new voice session with LiveKit room connection.
+Generate LiveKit connection details for voice chat. Creates a unique room and JWT token for the user.
 
 ```http
-POST /api/voice/sessions
+POST /api/voice/connection-details
 ```
 
 **Request Body:**
 ```json
 {
   "user_id": "user-123",
-  "session_type": "accounting_assistant",
-  "preferred_language": "french",
-  "voice_settings": {
-    "speech_rate": "normal",
-    "voice_gender": "female",
-    "audio_quality": "high"
-  },
-  "agent_preferences": {
-    "enabled_agents": ["invoice_qa", "calculation", "retrieval"],
-    "default_agent": "invoice_qa",
-    "context_retention": true
+  "conversation_id": "conv-uuid-456",
+  "accounting_context": {
+    "invoice_count": 15,
+    "vendor_count": 8,
+    "category_count": 12
   }
 }
 ```
@@ -63,567 +55,242 @@ POST /api/voice/sessions
 **Response:**
 ```json
 {
-  "session_id": "voice-session-uuid",
-  "room_name": "voice-room-uuid",
-  "connection_details": {
-    "livekit_url": "wss://livekit.textra.com",
-    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "participant_name": "user-123",
-    "room_config": {
-      "auto_subscribe": true,
-      "publish_audio": true,
-      "publish_video": false
-    }
-  },
-  "session_config": {
-    "max_duration": 3600,
-    "idle_timeout": 300,
-    "language": "french",
-    "available_agents": ["invoice_qa", "calculation", "retrieval"]
-  },
-  "created_at": "2023-12-01T10:30:00Z"
+  "server_url": "ws://localhost:7880",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "participant_name": "user-user-123",
+  "room_name": "textra-voice-user-123-1703760000",
+  "expires_at": "2023-12-01T16:30:00Z"
 }
 ```
 
-### Get Session Details
+**Request Model:**
+- `user_id` (string, required): Unique identifier for the user
+- `conversation_id` (string, optional): Associated conversation ID
+- `accounting_context` (object, optional): Additional accounting context data
 
-Retrieve information about an active voice session.
+**Response Model:**
+- `server_url` (string): LiveKit server URL for connection
+- `token` (string): JWT access token for LiveKit room
+- `participant_name` (string): Generated participant identifier
+- `room_name` (string): Unique room name for this session
+- `expires_at` (datetime): Token expiration timestamp
+
+### Get Active Rooms
+
+Retrieve list of active voice rooms.
 
 ```http
-GET /api/voice/sessions/{session_id}
+GET /api/voice/rooms
 ```
 
 **Response:**
 ```json
 {
-  "session_id": "voice-session-uuid",
-  "status": "active",
-  "participant_count": 2,
-  "duration": 450,
-  "conversation_stats": {
-    "messages_exchanged": 15,
-    "agents_used": ["invoice_qa", "calculation"],
-    "documents_referenced": 5,
-    "queries_processed": 12
-  },
-  "audio_stats": {
-    "audio_quality": "excellent",
-    "latency_ms": 85,
-    "packet_loss": 0.1
-  },
-  "session_context": {
-    "current_conversation_id": "conv-uuid-123",
-    "active_documents": ["INV-123", "INV-124"],
-    "last_activity": "2023-12-01T10:45:00Z"
-  }
+  "active_rooms": [],
+  "message": "Room listing requires LiveKit server API integration"
 }
 ```
+
+*Note: This endpoint currently returns a placeholder response. Full implementation requires LiveKit server API integration.*
 
 ### End Voice Session
 
-Terminate a voice session and cleanup resources.
+End a voice session by closing the room.
 
 ```http
-DELETE /api/voice/sessions/{session_id}
+DELETE /api/voice/rooms/{room_name}
 ```
+
+**Path Parameters:**
+- `room_name` (string): Name of the room to close
 
 **Response:**
 ```json
 {
-  "session_id": "voice-session-uuid",
-  "ended_at": "2023-12-01T11:00:00Z",
-  "session_summary": {
-    "total_duration": 1800,
-    "messages_processed": 25,
-    "successful_queries": 23,
-    "failed_queries": 2,
-    "documents_accessed": 8
-  },
-  "conversation_saved": true,
-  "conversation_id": "conv-uuid-123"
+  "message": "Voice session ended for room textra-voice-user-123-1703760000",
+  "room_name": "textra-voice-user-123-1703760000",
+  "ended_at": "2023-12-01T11:00:00Z"
 }
 ```
 
 ---
 
-## Voice Commands and Interactions
+## Agent Status and Configuration
 
-### Speech Recognition Configuration
+### Get Voice Agent Status
 
-Configure speech-to-text settings for optimal recognition.
-
-```http
-POST /api/voice/sessions/{session_id}/speech-config
-```
-
-**Request Body:**
-```json
-{
-  "language": "fr-FR",
-  "recognition_model": "enhanced",
-  "noise_suppression": true,
-  "auto_punctuation": true,
-  "profanity_filter": false,
-  "accounting_vocabulary": true,
-  "custom_vocabulary": [
-    "plan comptable général",
-    "hors taxes",
-    "toutes taxes comprises",
-    "numéro de facture"
-  ]
-}
-```
-
-### Voice Command Processing
-
-Process voice commands and route to appropriate agents.
+Get voice agent status and configuration details.
 
 ```http
-POST /api/voice/sessions/{session_id}/process-command
-```
-
-**Request Body:**
-```json
-{
-  "transcript": "Montre-moi toutes les factures de Fournisseur ABC du mois dernier",
-  "confidence": 0.95,
-  "audio_metadata": {
-    "duration": 3.2,
-    "sample_rate": 16000,
-    "language_detected": "fr-FR"
-  },
-  "context": {
-    "previous_queries": ["invoice_search"],
-    "session_state": "active_conversation"
-  }
-}
+GET /api/voice/agent/status
 ```
 
 **Response:**
 ```json
 {
-  "command_id": "cmd-uuid-123",
-  "intent_recognized": "invoice_search",
-  "parameters_extracted": {
-    "vendor_name": "Fournisseur ABC",
-    "date_filter": "last_month",
-    "document_type": "invoices"
+  "status": "configured",
+  "configuration": {
+    "livekit_url": "ws://localhost:7880",
+    "api_key_configured": true,
+    "api_secret_configured": true
   },
-  "agent_assigned": "retrieval",
-  "processing_status": "completed",
-  "results": {
-    "invoices_found": 8,
-    "total_amount": 15750.00,
-    "date_range": {
-      "start": "2023-11-01",
-      "end": "2023-11-30"
-    }
+  "dependencies": {
+    "groq_configured": true,
+    "cartesia_configured": false,
+    "livekit_server_accessible": false
   },
-  "voice_response": {
-    "text": "J'ai trouvé 8 factures de Fournisseur ABC du mois dernier pour un montant total de 15 750 euros. Voulez-vous que je vous donne plus de détails sur une facture en particulier?",
-    "audio_url": "/api/voice/audio/response-uuid-123.mp3",
-    "duration": 8.5
-  }
+  "timestamp": "2023-12-01T10:30:00Z"
 }
 ```
+
+**Response Fields:**
+- `status`: Overall configuration status ("configured" or "needs_configuration")
+- `configuration`: LiveKit connection configuration status
+- `dependencies`: External service dependencies status
+- `timestamp`: Status check timestamp
 
 ---
 
-## Text-to-Speech Configuration
+## Health Check
 
-### Voice Settings
+### Voice Service Health
 
-Configure text-to-speech parameters for natural-sounding responses.
-
-```http
-POST /api/voice/sessions/{session_id}/tts-config
-```
-
-**Request Body:**
-```json
-{
-  "voice_provider": "azure",
-  "voice_name": "fr-FR-DeniseNeural",
-  "speech_rate": 1.0,
-  "pitch": 0.0,
-  "volume": 0.8,
-  "pronunciation_adjustments": {
-    "accounting_terms": true,
-    "currency_formatting": "french",
-    "number_formatting": "european"
-  },
-  "emotional_tone": "professional",
-  "pause_settings": {
-    "sentence_pause": 500,
-    "paragraph_pause": 1000,
-    "list_item_pause": 300
-  }
-}
-```
-
-### Generate Speech Response
-
-Convert text responses to speech for voice delivery.
+Check the health status of the voice API service.
 
 ```http
-POST /api/voice/tts/generate
-```
-
-**Request Body:**
-```json
-{
-  "text": "La facture numéro FAC-2023-001 d'un montant de 1 200 euros TTC a été traitée avec succès. Le compte fournisseur proposé est 401001.",
-  "voice_settings": {
-    "voice_name": "fr-FR-DeniseNeural",
-    "speech_rate": 1.0,
-    "format": "mp3",
-    "quality": "high"
-  },
-  "context": {
-    "response_type": "invoice_processing_result",
-    "urgency": "normal",
-    "session_id": "voice-session-uuid"
-  }
-}
+GET /api/voice/health
 ```
 
 **Response:**
 ```json
 {
-  "audio_id": "audio-uuid-123",
-  "audio_url": "/api/voice/audio/audio-uuid-123.mp3",
-  "duration": 12.3,
-  "file_size": 196608,
-  "format": "mp3",
-  "sample_rate": 22050,
-  "generated_at": "2023-12-01T10:35:00Z",
-  "text_analyzed": {
-    "word_count": 24,
-    "estimated_speaking_time": 12.3,
-    "complexity_score": 0.7
-  }
+  "status": "healthy",
+  "service": "voice_api",
+  "timestamp": "2023-12-01T10:30:00Z",
+  "livekit_configured": true
 }
 ```
 
 ---
 
-## Agent-Specific Voice Interactions
+## Environment Configuration
 
-### Invoice QA Agent Voice Interface
+### Required Environment Variables
 
-Voice interactions specifically designed for invoice question-answering.
+The Voice API requires the following environment variables for proper operation:
 
-**Common Voice Commands:**
-- "Quel est le montant total de la facture INV-123?"
-- "Quels sont les articles sur cette facture?"
-- "La TVA est-elle calculée correctement?"
-- "Qui est le fournisseur de cette facture?"
+```bash
+# LiveKit Configuration
+LIVEKIT_URL=ws://localhost:7880
+LIVEKIT_API_KEY=your_livekit_api_key
+LIVEKIT_API_SECRET=your_livekit_api_secret
 
-**Response Format:**
-```json
+# Voice Processing Dependencies
+GROQ_API_KEY=your_groq_api_key
+CARTESIA_API_KEY=your_cartesia_api_key
+```
+
+### LiveKit Room Configuration
+
+When creating voice sessions, the system automatically configures:
+
+- **Room Naming**: Format `textra-voice-{user_id}-{timestamp}`
+- **Participant Naming**: Format `user-{user_id}`
+- **Token Duration**: 6 hours by default
+- **Permissions**: Full audio publish/subscribe, data channel access
+
+### Accounting Context Integration
+
+The voice API integrates with the accounting system to provide context-aware responses:
+
+```javascript
+// Example accounting context structure
 {
-  "agent_type": "invoice_qa",
-  "query_type": "invoice_details",
-  "voice_response": {
-    "summary": "La facture INV-123 d'un montant de 1 200 euros comprend 3 articles principaux.",
-    "detailed_response": "Voici les détails de la facture INV-123: Le montant total est de 1 200 euros TTC, soit 1 000 euros HT plus 200 euros de TVA à 20%. Cette facture comprend trois articles: 10 unités de matières premières à 80 euros l'unité, 5 unités d'emballage à 40 euros l'unité.",
-    "follow_up_suggestions": [
-      "Voulez-vous voir les détails de chaque ligne?",
-      "Souhaitez-vous vérifier les comptes proposés?"
-    ]
-  }
+  "status": "simplified",
+  "invoice_count": 25,
+  "vendor_count": 12,
+  "category_count": 8,
+  "pcg_available": "true",
+  "chart_of_accounts_available": true
 }
 ```
 
-### Calculation Agent Voice Interface
-
-Voice interactions for financial calculations and analysis.
-
-**Common Voice Commands:**
-- "Calcule le total des factures de ce mois"
-- "Quelle est la TVA totale sur ces factures?"
-- "Compare les montants entre ces deux fournisseurs"
-- "Calcule la moyenne des factures de ce trimestre"
-
-### Retrieval Agent Voice Interface
-
-Voice commands for searching and retrieving documents.
-
-**Common Voice Commands:**
-- "Trouve toutes les factures impayées"
-- "Montre-moi les factures de plus de 5000 euros"
-- "Cherche les factures de Fournisseur XYZ"
-- "Affiche les factures du mois dernier"
+This context is used by voice agents to provide relevant responses about:
+- Available invoice data
+- Vendor information
+- Account categories
+- French PCG (Plan Comptable Général) integration
 
 ---
 
-## Real-Time Audio Streaming
+## Integration with LiveKit Frontend
 
-### Audio Stream Management
+### Client-Side Connection
 
-Manage real-time audio streaming for voice interactions.
+Use the connection details to establish a LiveKit client connection:
 
-```http
-POST /api/voice/sessions/{session_id}/stream/start
+```javascript
+import { Room, RoomEvent } from 'livekit-client';
+
+// Get connection details from API
+const response = await fetch('/api/voice/connection-details', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    user_id: 'user-123',
+    conversation_id: 'conv-456'
+  })
+});
+
+const { server_url, token, room_name } = await response.json();
+
+// Connect to LiveKit room
+const room = new Room();
+await room.connect(server_url, token);
+
+// Handle voice events
+room.on(RoomEvent.Connected, () => {
+  console.log('Connected to voice session');
+});
 ```
 
-**Request Body:**
-```json
-{
-  "stream_config": {
-    "audio_codec": "opus",
-    "sample_rate": 48000,
-    "channels": 1,
-    "bitrate": 64000
-  },
-  "processing_config": {
-    "voice_activity_detection": true,
-    "noise_suppression": true,
-    "echo_cancellation": true,
-    "auto_gain_control": true
-  }
-}
-```
+### Voice Agent Integration
 
-### Audio Quality Monitoring
+The voice API works seamlessly with the LiveKit agent system running in the `livekit_agent/` directory, providing:
 
-Monitor audio quality and connection status during voice sessions.
-
-```http
-GET /api/voice/sessions/{session_id}/audio-quality
-```
-
-**Response:**
-```json
-{
-  "session_id": "voice-session-uuid",
-  "audio_quality": {
-    "overall_score": 4.2,
-    "latency_ms": 85,
-    "jitter_ms": 12,
-    "packet_loss_percentage": 0.1,
-    "bandwidth_usage": 64000
-  },
-  "connection_stats": {
-    "connection_type": "webrtc",
-    "ice_connection_state": "connected",
-    "dtls_state": "connected",
-    "signaling_state": "stable"
-  },
-  "recommendations": [
-    "Audio quality is excellent",
-    "No optimization needed"
-  ]
-}
-```
+- **Agno Agent Integration**: Multi-agent system with specialized accounting agents
+- **Memory Persistence**: MongoDB-based conversation memory
+- **Knowledge Base**: PDF document integration for context-aware responses
+- **Real-time Streaming**: Live audio processing and response generation
 
 ---
 
-## Voice Session Analytics
+## Error Handling
 
-### Session Performance Metrics
+### Common Error Responses
 
-Get detailed analytics about voice session performance.
-
-```http
-GET /api/voice/sessions/{session_id}/analytics
-```
-
-**Response:**
 ```json
+// Invalid user or missing parameters
 {
-  "session_id": "voice-session-uuid",
-  "performance_metrics": {
-    "speech_recognition": {
-      "accuracy": 0.95,
-      "average_confidence": 0.92,
-      "processing_latency": 450,
-      "total_utterances": 45
-    },
-    "agent_performance": {
-      "response_time": 2.3,
-      "success_rate": 0.96,
-      "user_satisfaction": 0.89,
-      "queries_resolved": 42
-    },
-    "audio_quality": {
-      "average_latency": 85,
-      "connection_stability": 0.98,
-      "audio_clarity": 4.1
-    }
-  },
-  "usage_statistics": {
-    "total_duration": 1800,
-    "active_speaking_time": 450,
-    "agent_response_time": 380,
-    "silence_time": 970
-  },
-  "conversation_analysis": {
-    "topics_discussed": ["invoice_search", "payment_status", "vat_calculation"],
-    "documents_referenced": 12,
-    "successful_operations": 15,
-    "user_intent_accuracy": 0.94
-  }
+  "detail": "Failed to create voice connection: User validation failed"
+}
+
+// LiveKit configuration issues
+{
+  "detail": "Failed to create voice connection: LiveKit credentials not configured"
+}
+
+// Room management errors
+{
+  "detail": "Failed to end voice session: Room not found"
 }
 ```
 
-### Voice Command Analytics
+### Status Codes
 
-Analyze voice command patterns and effectiveness.
-
-```http
-GET /api/voice/analytics/commands
-```
-
-**Query Parameters:**
-- `date_from`: Start date for analytics
-- `date_to`: End date for analytics
-- `user_id`: Specific user analytics
-- `session_type`: Filter by session type
-
-**Response:**
-```json
-{
-  "command_analytics": {
-    "total_commands": 1250,
-    "successful_commands": 1198,
-    "success_rate": 0.958,
-    "average_processing_time": 2.1
-  },
-  "popular_commands": [
-    {
-      "command_pattern": "find invoices from {vendor}",
-      "frequency": 245,
-      "success_rate": 0.97,
-      "average_response_time": 1.8
-    },
-    {
-      "command_pattern": "calculate total amount",
-      "frequency": 189,
-      "success_rate": 0.99,
-      "average_response_time": 1.2
-    }
-  ],
-  "language_distribution": {
-    "french": 0.75,
-    "english": 0.20,
-    "arabic": 0.05
-  },
-  "agent_usage": {
-    "retrieval": 0.45,
-    "invoice_qa": 0.35,
-    "calculation": 0.15,
-    "mongodb": 0.05
-  }
-}
-```
+- `200`: Successful operation
+- `400`: Bad request (invalid parameters)
+- `404`: Resource not found (room, user)
+- `500`: Internal server error (configuration, LiveKit issues)
 
 ---
-
-## Error Handling and Troubleshooting
-
-### Voice Session Errors
-
-Common error scenarios and their handling:
-
-```json
-{
-  "error_types": {
-    "audio_connection_failed": {
-      "code": "VOICE_001",
-      "message": "Failed to establish audio connection",
-      "troubleshooting": [
-        "Check microphone permissions",
-        "Verify network connectivity",
-        "Try refreshing the session"
-      ]
-    },
-    "speech_recognition_failed": {
-      "code": "VOICE_002", 
-      "message": "Unable to recognize speech",
-      "troubleshooting": [
-        "Speak more clearly",
-        "Reduce background noise",
-        "Check microphone quality"
-      ]
-    },
-    "agent_unavailable": {
-      "code": "VOICE_003",
-      "message": "Requested agent is not available",
-      "troubleshooting": [
-        "Try a different agent",
-        "Wait for agent to become available",
-        "Use text-based interaction"
-      ]
-    }
-  }
-}
-```
-
-### Audio Quality Issues
-
-Diagnose and resolve audio quality problems:
-
-```http
-POST /api/voice/sessions/{session_id}/diagnose
-```
-
-**Response:**
-```json
-{
-  "diagnosis": {
-    "audio_input": "good",
-    "audio_output": "excellent", 
-    "network_latency": "acceptable",
-    "processing_speed": "optimal"
-  },
-  "issues_detected": [
-    {
-      "issue": "slight_background_noise",
-      "severity": "low",
-      "recommendation": "Enable noise suppression"
-    }
-  ],
-  "optimization_suggestions": [
-    "Use headphones for better audio quality",
-    "Ensure stable internet connection",
-    "Close other applications using microphone"
-  ]
-}
-```
-
----
-
-## Integration and Webhooks
-
-### Voice Event Webhooks
-
-Configure webhooks for voice session events:
-
-```http
-POST /api/voice/webhooks
-```
-
-**Request Body:**
-```json
-{
-  "url": "https://your-system.com/webhook/voice",
-  "events": [
-    "session.started",
-    "session.ended", 
-    "command.processed",
-    "audio.quality_issue"
-  ],
-  "secret": "webhook-secret-key"
-}
-```
-
-**Available Events:**
-- `session.started`: Voice session initiated
-- `session.ended`: Voice session terminated
-- `command.processed`: Voice command completed
-- `audio.quality_issue`: Audio quality problem detected
-- `agent.response_generated`: AI agent response ready
-- `speech.recognition_completed`: Speech-to-text completed
-
-The Voice API enables natural, conversational interaction with Textra's accounting system, making complex financial operations accessible through simple voice commands while maintaining the accuracy and compliance standards required for professional accounting workflows. 

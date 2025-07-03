@@ -3,8 +3,6 @@ title: "Conversation Service"
 description: "Multi-conversation chat system with AI integration and intelligent conversation management"
 ---
 
-# Conversation Service
-
 The Conversation Service powers Textra's sophisticated multi-conversation chat interface, enabling users to maintain multiple simultaneous conversations with AI agents while providing intelligent conversation management, context preservation, and seamless integration with the accounting automation pipeline.
 
 ## Service Architecture
@@ -100,11 +98,6 @@ Users can seamlessly switch between conversations while maintaining context:
 
 The Conversation Service integrates with Textra's **team of specialized AI agents**:
 
-#### Invoice Retrieval Agent
-**Specialization**: Finding and retrieving invoice documents based on search criteria
-**Integration**: Seamlessly searches the database and presents results in conversational format
-**Capabilities**: Understands natural language queries like "find all invoices from Supplier X last month"
-
 #### Invoice QA Agent  
 **Specialization**: Answering detailed questions about invoice content using RAG (Retrieval-Augmented Generation)
 **Integration**: Provides accurate, source-backed answers about specific invoice details
@@ -113,43 +106,13 @@ The Conversation Service integrates with Textra's **team of specialized AI agent
 #### Calculation Agent
 **Specialization**: Performing financial calculations and analysis on invoice data
 **Integration**: Handles complex calculations and provides detailed breakdowns
-**Capabilities**: VAT calculations, total verification, currency conversions, and financial analysis
+**Capabilities**: VAT calculations, total verification, currency conversions
 
 #### MongoDB Agent
 **Specialization**: Direct database queries and data analysis
 **Integration**: Provides database insights and complex analytical queries
 **Capabilities**: Aggregation queries, statistical analysis, and data mining operations
 
-### Intelligent Agent Routing
-
-The service includes **smart agent routing** that automatically determines which agent should handle each user query:
-
-**Intent Recognition**: Analyzes user messages to understand the intended action
-**Agent Capability Matching**: Routes queries to agents best equipped to handle them
-**Fallback Mechanisms**: Graceful handling when primary agents are unavailable
-**Multi-Agent Coordination**: Some complex queries are handled by multiple agents working together
-
----
-
-## Caching and Performance Optimization
-
-### Conversation-Specific Caching
-
-The service implements **multi-layer caching strategies** optimized for conversation patterns:
-
-**Recent Message Caching**: Last 50 messages per conversation are kept in fast cache
-**Context Caching**: Conversation context and metadata cached for instant access
-**Search Result Caching**: Recent search results cached to avoid duplicate database queries
-**AI Response Caching**: Similar questions get cached responses when appropriate
-
-### Performance Monitoring
-
-Continuous monitoring ensures optimal conversation performance:
-
-**Response Time Tracking**: Monitoring of message delivery and AI response times
-**Cache Hit Rate Analysis**: Optimization of caching strategies based on usage patterns
-**User Experience Metrics**: Tracking of user satisfaction and engagement levels
-**System Load Balancing**: Distribution of conversation load across available resources
 
 ---
 
@@ -164,101 +127,3 @@ Conversations are stored in MongoDB with a sophisticated schema design:
 **Scalability Design**: Schema designed to handle millions of conversations efficiently
 **Backup Integration**: Conversation data is included in system backup procedures
 
-### Data Integrity and Recovery
-
-The service ensures conversation data reliability:
-
-**Atomic Operations**: Message additions and updates are atomic to prevent data corruption
-**Consistency Checks**: Regular validation of conversation data integrity
-**Recovery Procedures**: Ability to recover conversations from various failure scenarios
-**Audit Trails**: Complete audit trails for compliance and debugging purposes
-
----
-
-## Security and Privacy
-
-### Access Control and Permissions
-
-Sophisticated security measures protect conversation data:
-
-**User Isolation**: Users can only access their own conversations unless explicitly shared
-**Role-Based Access**: Different user roles have different conversation capabilities
-**Sharing Controls**: Granular control over conversation sharing and collaboration
-**Data Encryption**: Sensitive conversation content is encrypted at rest and in transit
-
-### Compliance and Data Retention
-
-The service meets enterprise compliance requirements:
-
-**Retention Policies**: Configurable data retention based on organizational policies
-**Privacy Controls**: GDPR-compliant data handling and deletion capabilities
-**Audit Logging**: Comprehensive logging of all conversation operations
-**Data Export**: Complete data export capabilities for compliance and migration
-
----
-
-## Integration with Accounting Pipeline
-
-### Seamless Workflow Integration
-
-Conversations are tightly integrated with the accounting automation pipeline:
-
-**Process Initiation**: Users can start invoice processing directly from chat
-**Status Monitoring**: Real-time updates on processing progress within conversations
-**Result Delivery**: Processing results are delivered back to the originating conversation
-**Error Handling**: Processing errors are communicated clearly through the chat interface
-
-### Document Context Awareness
-
-The service understands and maintains context about financial documents:
-
-**Automatic Linking**: Messages about specific invoices are automatically linked to those documents
-**Status Awareness**: The system knows the processing status of discussed documents
-**Historical Context**: Previous conversations about the same documents are accessible
-**Cross-Reference Capabilities**: Easy navigation between related documents and conversations
-
----
-
-## User Experience Features
-
-### Intelligent Conversation Suggestions
-
-The service provides helpful suggestions to improve user productivity:
-
-**Query Suggestions**: Based on conversation context, suggests relevant follow-up questions
-**Action Recommendations**: Suggests actions users might want to take based on conversation content
-**Related Information**: Proactively surfaces related invoices or documents that might be relevant
-**Workflow Optimization**: Learns user patterns and suggests more efficient workflows
-
-### Personalization and Learning
-
-The system adapts to individual user preferences:
-
-**Response Style Learning**: Adapts AI response style to match user preferences
-**Terminology Adaptation**: Learns user-specific terminology and language patterns
-**Workflow Preferences**: Remembers how users prefer to structure their work
-**Context Prioritization**: Learns what information is most important to each user
-
----
-
-## Analytics and Insights
-
-### Conversation Analytics
-
-The service provides detailed analytics for optimization:
-
-**Usage Patterns**: Understanding how users interact with the conversation system
-**Popular Queries**: Identifying common questions and optimizing responses
-**Agent Performance**: Analyzing which agents are most effective for different query types
-**User Satisfaction**: Tracking user engagement and satisfaction metrics
-
-### Business Intelligence Integration
-
-Conversation data contributes to broader business intelligence:
-
-**Process Optimization**: Identifying bottlenecks in accounting workflows
-**Training Insights**: Understanding where users need additional support or training
-**Feature Usage**: Tracking which features are most valuable to users
-**ROI Analysis**: Measuring the productivity impact of the conversation system
-
-The Conversation Service transforms traditional accounting software interaction from form-based interfaces to natural, intelligent conversations that understand context, maintain history, and seamlessly integrate with complex financial workflows. 

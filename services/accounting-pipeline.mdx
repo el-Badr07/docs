@@ -3,8 +3,6 @@ title: "Accounting Pipeline Services"
 description: "Deep dive into Textra's 5-phase accounting automation pipeline architecture"
 ---
 
-# Accounting Pipeline Services
-
 Textra's accounting automation is built around a sophisticated **5-phase pipeline** that transforms raw invoice documents into French PCG-compliant journal entries. This enterprise-grade system processes thousands of invoices with high accuracy and complete audit trails.
 
 <CardGroup cols={2}>
@@ -441,19 +439,13 @@ The orchestrator provides comprehensive performance analytics:
 
 ### VAT Reconciliation Service
 
-**File**: `vat_reconciliation.py` (187 lines)
-
 Specialized service for fixing VAT extraction inconsistencies and ensuring compliance with French VAT regulations.
 
 ### Due Date Calculator
 
-**File**: `due_date_calculator.py` (139 lines)  
-
 Intelligent due date calculation based on payment terms, French business calendar, and industry standards.
 
 ### Financial Document Processor
-
-**File**: `financial_document_processor.py` (570 lines)
 
 Extended document processing capabilities for bank statements, receipts, and other financial documents beyond invoices.
 
@@ -467,6 +459,4 @@ The 5-phase pipeline integrates seamlessly with Textra's broader architecture:
 - **Cache Integration**: Redis caching for performance optimization  
 - **Queue Integration**: Celery task queue for async processing
 - **API Integration**: REST API endpoints for external system integration
-- **Monitoring Integration**: Comprehensive logging and metrics collection
 
-This enterprise-grade pipeline processes thousands of invoices daily with 95%+ accuracy rates and complete French PCG compliance, making it the foundation of Textra's accounting automation platform. 

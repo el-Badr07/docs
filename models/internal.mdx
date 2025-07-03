@@ -60,21 +60,21 @@ Manages configuration for individual microservices within the Textra ecosystem.
 
 ## Task Management Models
 
-### CeleryTaskModel
+### TaskMessageModel
 
-Comprehensive model for managing Celery background tasks with detailed tracking and monitoring.
+Comprehensive model for managing RabbitMQ Task Manager messages with detailed tracking and monitoring.
 
 #### Task Identity and Classification
 
 **Task Properties**:
-- **task_id**: Unique Celery task identifier
+- **task_id**: Unique task identifier
 - **task_name**: Human-readable task name (e.g., "process_invoice_async")
-- **task_type**: Category of task (invoice_processing, export_generation, system_maintenance)
+- **task_type**: Category of task (invoice_processing, export_accounting, system_maintenance)
 - **priority**: Task priority level (low, normal, high, critical)
 
 **Execution Context**:
-- **queue_name**: Celery queue where the task is executed
-- **worker_id**: Identifier of the worker processing the task
+- **queue_name**: RabbitMQ routing key used for the task
+- **worker_id**: Identifier of the message_worker instance processing the task
 - **retry_count**: Number of retry attempts for failed tasks
 - **max_retries**: Maximum allowed retry attempts
 
@@ -109,12 +109,12 @@ Comprehensive model for managing Celery background tasks with detailed tracking 
 
 ### TaskQueue Model
 
-Manages task queue statistics and performance monitoring.
+Manages RabbitMQ queue statistics and performance monitoring.
 
 #### Queue Statistics
 
 **Queue Metrics**:
-- **queue_name**: Name of the Celery queue
+- **queue_name**: Name of the RabbitMQ queue
 - **pending_tasks**: Number of tasks waiting to be processed
 - **active_tasks**: Number of currently executing tasks
 - **completed_tasks**: Number of successfully completed tasks

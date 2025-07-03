@@ -1,0 +1,430 @@
+---
+title: "API Models"
+description: "Pydantic models for Textra's API endpoints and request/response handling"
+---
+
+The API Models define the data structures used for request/response handling across Textra's REST API endpoints. These Pydantic models ensure type safety, validation, and consistent data formatting throughout the accounting automation pipeline.
+
+## Processing Status Enum
+
+### ProcessingStatusEnum
+
+```python
+class ProcessingStatusEnum(str, Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPORTED = "exported"
+```
+
+Core status tracking for all processing workflows:
+- **PENDING**: Task submitted but not yet started
+- **PROCESSING**: Actively being processed
+- **COMPLETED**: Successfully completed processing
+- **FAILED**: Processing failed with errors
+- **EXPORTED**: Processing completed and results exported
+
+## Request Models
+
+### ProcessInvoiceRequest
+
+```python
+class ProcessInvoiceRequest(BaseModel):
+    export_formats: Optional[List[str]] = Field(["csv", "json"], description="List of export formats")
+    auto_export: bool = Field(True, description="Whether to automatically export results")
+    user_id: Optional[str] = Field(None, description="Optional user ID for tracking")
+```
+
+**Request Parameters for Invoice Processing:**
+- `export_formats`: Supported formats include "csv", "json", "xml", "sage"
+- `auto_export`: When true, automatically generates export files upon completion
+- `user_id`: Optional tracking identifier for audit and analytics
+
+**Usage Example:**
+```json
+{
+  "export_formats": ["csv", "xml"],
+  "auto_export": true,
+  "user_id": "user123"
+}
+```
+
+### BatchProcessRequest
+
+```python
+class BatchProcessRequest(BaseModel):
+    export_formats: Optional[List[str]] = Field(["csv", "json"], description="List of export formats")
+    auto_export: bool = Field(True, description="Whether to automatically export results")
+    max_workers: Optional[int] = Field(None, description="Maximum number of workers for parallel processing")
+    user_id: Optional[str] = Field(None, description="Optional user ID for tracking")
+```
+
+**Batch Processing Configuration:**
+- `max_workers`: Controls parallel processing (default: 3, max: 10)
+- Inherits all options from `ProcessInvoiceRequest`
+- Optimizes resource allocation for multiple file processing
+
+**Usage Example:**
+```json
+{
+  "export_formats": ["csv", "json"],
+  "auto_export": true,
+  "max_workers": 5,
+  "user_id": "user123"
+}
+```
+
+### ExportRequest
+
+```python
+class ExportRequest(BaseModel):
+    export_formats: List[str] = Field(..., description="List of export formats")
+    base_filename: Optional[str] = Field(None, description="Base filename for exports")
+    user_id: Optional[str] = Field(None, description="Optional user ID for tracking")
+```
+
+**Export Configuration:**
+- `export_formats`: Required list of formats to generate
+- `base_filename`: Custom filename prefix (defaults to invoice ID)
+- Supports multiple simultaneous format generation
+
+**Usage Example:**
+```json
+{
+  "export_formats": ["csv", "xml", "sage"],
+  "base_filename": "monthly_invoices_2024_01",
+  "user_id": "user123"
+}
+```
+
+## Response Models
+
+### TaskStatusResponse
+
+```python
+class TaskStatusResponse(BaseModel):
+    task_id: str = Field(..., description="Task ID for tracking")
+    status: str = Field(..., description="Task status")
+    result: Optional[Dict[str, Any]] = Field(None, description="Task result if available")
+    progress: Optional[Dict[str, Any]] = Field(None, description="Task progress information")
+    error: Optional[str] = Field(None, description="Error message if task failed")
+```
+
+**Comprehensive Task Tracking:**
+
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "STARTED",
+  "result": null,
+  "progress": {
+    "current_phase": "Phase 2 - Account Imputation",
+    "completion_percentage": 40,
+    "estimated_time_remaining": 30
+  },
+  "error": null
+}
+```
+
+### InvoiceProcessResponse
+
+```python
+class InvoiceProcessResponse(BaseModel):
+    processing_id: str = Field(..., description="Processing ID for tracking")
+    invoice_id: str = Field(..., description="Invoice ID")
+    status: ProcessingStatusEnum = Field(..., description="Processing status")
+    file_name: str = Field(..., description="Original filename")
+    timestamp: datetime = Field(..., description="Processing timestamp")
+    metadata: Dict[str, Any] = Field({}, description="Additional metadata")
+```
+
+**Synchronous Processing Response:**
+
+```json
+{
+  "processing_id": "ObjectId(65a1b2c3d4e5f6789)",
+  "invoice_id": "INV-12345678-231201",
+  "status": "completed",
+  "file_name": "invoice.pdf",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "metadata": {
+    "file_size": 1024000,
+    "processing_time": 12.45,
+    "llm_provider": "gemini"
+  }
+}
+```
+
+### BatchProcessResponse
+
+```python
+class BatchProcessResponse(BaseModel):
+    batch_id: str = Field(..., description="Batch ID for tracking")
+    task_id: str = Field(..., description="Task ID")
+    file_count: int = Field(..., description="Number of files in batch")
+    status: str = Field(..., description="Batch status")
+    timestamp: datetime = Field(..., description="Processing timestamp")
+    message: str = Field(..., description="Status message")
+```
+
+**Batch Processing Response:**
+
+```json
+{
+  "batch_id": "batch-550e8400-e29b-41d4",
+  "task_id": "550e8400-e29b-41d4-a716-446655440001",
+  "file_count": 5,
+  "status": "pending",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "message": "Batch processing started successfully"
+}
+```
+
+### ExportResponse
+
+```python
+class ExportResponse(BaseModel):
+    task_id: str = Field(..., description="Task ID for tracking")
+    export_formats: List[str] = Field(..., description="Export formats")
+    status: str = Field(..., description="Export status")
+    message: str = Field(..., description="Status message")
+```
+
+**Export Task Response:**
+
+```json
+{
+  "task_id": "export-550e8400-e29b-41d4",
+  "export_formats": ["csv", "xml"],
+  "status": "pending",
+  "message": "Export task queued successfully"
+}
+```
+
+## System Status Models
+
+### HealthCheckResponse
+
+```python
+class HealthCheckResponse(BaseModel):
+    overall_status: str = Field(..., description="Overall system health status")
+    components: Dict[str, Any] = Field(..., description="Component-specific health status")
+    timestamp: datetime = Field(..., description="Health check timestamp")
+```
+
+**System Health Status:**
+
+```json
+{
+  "overall_status": "healthy",
+  "components": {
+    "database": {
+      "status": "healthy",
+      "type": "MongoDB",
+      "message": "Connection successful"
+    },
+    "cache": {
+      "status": "healthy",
+      "type": "Redis",
+      "message": "Connection successful"
+    },
+    "task_queue": {
+      "status": "healthy",
+      "type": "RabbitMQ",
+      "message": "Connection successful"
+    },
+    "storage": {
+      "status": "healthy",
+      "message": "Read/write access confirmed"
+    }
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+### PerformanceStatsResponse
+
+```python
+class PerformanceStatsResponse(BaseModel):
+    period_days: int = Field(..., description="Period in days")
+    total_processed: int = Field(..., description="Total invoices processed")
+    success_rate: float = Field(..., description="Success rate")
+    average_processing_time: float = Field(..., description="Average processing time in seconds")
+    provider_usage: Dict[str, int] = Field(..., description="LLM provider usage counts")
+    error_counts: Optional[Dict[str, int]] = Field(None, description="Error counts by type")
+```
+
+**Performance Analytics:**
+
+```json
+{
+  "period_days": 30,
+  "total_processed": 1250,
+  "success_rate": 98.4,
+  "average_processing_time": 12.5,
+  "provider_usage": {
+    "gemini": 750,
+    "groq": 300,
+    "openai": 200
+  },
+  "error_counts": {
+    "OCR extraction failed": 8,
+    "Invalid PCG account": 3,
+    "Balance validation error": 2
+  }
+}
+```
+
+## Format and Validation Models
+
+### SupportedFormatsResponse
+
+```python
+class SupportedFormatsResponse(BaseModel):
+    supported_formats: List[str] = Field(..., description="Supported export formats")
+    format_descriptions: Dict[str, str] = Field(..., description="Format descriptions")
+```
+
+**Available Export Formats:**
+
+```json
+{
+  "supported_formats": ["csv", "xml", "json", "sage"],
+  "format_descriptions": {
+    "csv": "Comma-separated values format for spreadsheet import",
+    "xml": "XML format compatible with French accounting software",
+    "json": "JSON format for API integration",
+    "sage": "Sage accounting software specific format"
+  }
+}
+```
+
+### PCGAccountsResponse
+
+```python
+class PCGAccountsResponse(BaseModel):
+    accounts: List[Dict[str, Any]] = Field(..., description="PCG accounts")
+    total_found: int = Field(..., description="Total accounts found")
+    search_term: Optional[str] = Field(None, description="Search term used")
+    account_class: Optional[str] = Field(None, description="Account class filter used")
+```
+
+**PCG Account Search Results:**
+
+```json
+{
+  "accounts": [
+    {
+      "account_number": "401000",
+      "account_name": "Fournisseurs",
+      "account_class": "4",
+      "description": "Comptes des fournisseurs d'exploitation"
+    },
+    {
+      "account_number": "401001",
+      "account_name": "Fournisseurs - Achats de marchandises",
+      "account_class": "4",
+      "description": "Comptes détaillés des fournisseurs"
+    }
+  ],
+  "total_found": 25,
+  "search_term": "fournisseur",
+  "account_class": "4"
+}
+```
+
+### AccountValidationResponse
+
+```python
+class AccountValidationResponse(BaseModel):
+    validation_results: Dict[str, Dict[str, Any]] = Field(..., description="Validation results by account number")
+    summary: Dict[str, int] = Field(..., description="Validation summary")
+```
+
+**Account Validation Results:**
+
+```json
+{
+  "validation_results": {
+    "401000": {
+      "exists": true,
+      "details": {
+        "account_name": "Fournisseurs",
+        "account_class": "4"
+      },
+      "valid": true
+    },
+    "999999": {
+      "exists": false,
+      "details": null,
+      "valid": false
+    }
+  },
+  "summary": {
+    "total_checked": 4,
+    "valid_accounts": 3,
+    "invalid_accounts": 1
+  }
+}
+```
+
+## Usage Patterns
+
+### Request Validation
+
+All API models include comprehensive validation:
+
+```python
+# Automatic validation on instantiation
+request = ProcessInvoiceRequest(
+    export_formats=["csv", "xml"],
+    auto_export=True,
+    user_id="user123"
+)
+
+# Validation errors raise clear exceptions
+try:
+    invalid_request = ProcessInvoiceRequest(
+        export_formats=["invalid_format"]  # Will raise validation error
+    )
+except ValidationError as e:
+    print(f"Validation failed: {e}")
+```
+
+### Response Serialization
+
+Responses automatically serialize to JSON:
+
+```python
+# Response models handle datetime serialization
+response = HealthCheckResponse(
+    overall_status="healthy",
+    components={"database": {"status": "healthy"}},
+    timestamp=datetime.now()
+)
+
+# Automatically converts to JSON-compatible format
+json_data = response.dict()
+```
+
+### Type Safety
+
+Models provide full type hints for IDE support:
+
+```python
+def process_invoice(request: ProcessInvoiceRequest) -> InvoiceProcessResponse:
+    # Full type checking and autocomplete
+    formats = request.export_formats
+    auto_export = request.auto_export
+    
+    return InvoiceProcessResponse(
+        processing_id="12345",
+        invoice_id="INV-001",
+        status=ProcessingStatusEnum.PENDING,
+        file_name="invoice.pdf",
+        timestamp=datetime.now()
+    )
+```
+
+The API Models provide a robust foundation for type-safe API interactions, ensuring data consistency and validation across all Textra accounting automation endpoints. 

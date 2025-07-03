@@ -3,21 +3,7 @@ title: "Cache Service"
 description: "Redis-based intelligent caching system for performance optimization across the accounting pipeline"
 ---
 
-# Cache Service
-
 The Cache Service is Textra's intelligent caching layer built on Redis, designed to dramatically improve performance across the entire accounting automation pipeline. This service implements sophisticated caching strategies that reduce processing time, minimize external API calls, and provide instant access to frequently requested data.
-
-## Caching Philosophy
-
-### Multi-Layer Caching Strategy
-
-The Cache Service implements a **hierarchical caching approach** that optimizes different types of data based on their usage patterns and computational cost:
-
-**Hot Cache**: Frequently accessed data with millisecond response times
-**Warm Cache**: Recently processed data with sub-second response times  
-**Cold Storage**: Historical data with standard database response times
-
-This approach ensures that the most critical operations (like real-time status updates) are lightning-fast, while less frequent operations (like historical reporting) maintain reasonable performance.
 
 ### Intelligent Cache Invalidation
 
@@ -29,7 +15,7 @@ Rather than using simple time-based expiration, the service employs **smart inva
 
 ### 1. Task Status Caching
 
-**Purpose**: Provides instant access to Celery task status and progress information
+**Purpose**: Provides instant access to RabbitMQ task status and progress information
 
 The system caches task status data to eliminate the need for constant database queries when users are monitoring invoice processing progress. This is particularly important for:
 
